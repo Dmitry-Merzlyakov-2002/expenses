@@ -242,6 +242,8 @@ document.addEventListener('alpine:init', () => {
     filterCat: 'all',
     filterType: 'all',
     filterPeriod: 'month',
+    customStartDate: '',
+    customEndDate: '',
     form: { amount:'', currency:'EUR', catId:'housing', type:'one', date:'', comment:'', method:'card' },
     _restoringPendingQueue: false,
     newCatName: '',
@@ -453,6 +455,19 @@ document.addEventListener('alpine:init', () => {
       const amountInUsd = from==='usd' ? amount : amount / usdRates[from.toLowerCase()];
       return to==='usd' ? amountInUsd : amountInUsd * usdRates[to.toLowerCase()];
     },
+    setPeriod(mode){
+      this.filterPeriod = mode;
+      if(mode==='range' && (!this.customStartDate || !this.customEndDate)){
+        const todayStr = this.today();
+        const today = new Date(todayStr);
+        const start = new Date(today);
+        start.setDate(start.getDate()-30);
+        const pad = n=> String(n).padStart(2,'0');
+        this.customEndDate = todayStr;
+        this.customStartDate = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+      }
+      this.recalcAll();
+    },
     recalcAll(){ this.$nextTick(()=>this.renderChart()); },
     liveBaseAmount(exp){
       if(!this.rates.eur) return exp.baseAmount;
@@ -538,24 +553,77 @@ document.addEventListener('alpine:init', () => {
       let list = [...this.expenses];
       if(this.filterCat!=='all') list = list.filter(e=>e.catId===this.filterCat);
       if(this.filterType!=='all') list = list.filter(e=>e.type===this.filterType);
-      if(this.filterPeriod!=='all'){
-        const now = new Date(); let cutoff = new Date();
-        if(this.filterPeriod==='week') cutoff.setDate(now.getDate()-7);
-        else if(this.filterPeriod==='month') cutoff.setMonth(now.getMonth()-1);
+
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
+
+      if(this.filterPeriod==='day'){
+        list = list.filter(e=>{
+          const d = new Date(e.date);
+          return d >= startOfToday && d < endOfToday;
+        });
+      } else if(this.filterPeriod==='week'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-7);
         list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='month'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-30);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='range'){
+        if(this.customStartDate && this.customEndDate){
+          const start = new Date(this.customStartDate);
+          const end = new Date(this.customEndDate);
+          const endPlus = new Date(end.getFullYear(), end.getMonth(), end.getDate()+1);
+          list = list.filter(e=>{
+            const d = new Date(e.date);
+            return d >= start && d < endPlus;
+          });
+        }
+      }
+      // 'all' оставляем без дополнительной фильтрации по датам
+      return list;
+    },
+    get periodExpenses(){
+      // Базовый список без фильтров по категории/типу, только по выбранному периоду
+      let list = [...this.expenses];
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
+
+      if(this.filterPeriod==='day'){
+        list = list.filter(e=>{
+          const d = new Date(e.date);
+          return d >= startOfToday && d < endOfToday;
+        });
+      } else if(this.filterPeriod==='week'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-7);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='month'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-30);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='range'){
+        if(this.customStartDate && this.customEndDate){
+          const start = new Date(this.customStartDate);
+          const end = new Date(this.customEndDate);
+          const endPlus = new Date(end.getFullYear(), end.getMonth(), end.getDate()+1);
+          list = list.filter(e=>{
+            const d = new Date(e.date);
+            return d >= start && d < endPlus;
+          });
+        }
       }
       return list;
     },
-    get monthExpenses(){
-      const now = new Date(); const cutoff = new Date(); cutoff.setDate(1); cutoff.setHours(0,0,0,0);
-      return this.expenses.filter(e=> new Date(e.date) >= cutoff);
-    },
-    get monthTotal(){ return this.monthExpenses.reduce((s,e)=>s+this.liveBaseAmount(e),0); },
-    get oneTimeTotal(){ return this.monthExpenses.filter(e=>e.type==='one').reduce((s,e)=>s+this.liveBaseAmount(e),0); },
-    get recurringTotal(){ return this.monthExpenses.filter(e=>e.type==='recurring').reduce((s,e)=>s+this.liveBaseAmount(e),0); },
+    get monthTotal(){ return this.periodExpenses.reduce((s,e)=>s+this.liveBaseAmount(e),0); },
+    get oneTimeTotal(){ return this.periodExpenses.filter(e=>e.type==='one').reduce((s,e)=>s+this.liveBaseAmount(e),0); },
+    get recurringTotal(){ return this.periodExpenses.filter(e=>e.type==='recurring').reduce((s,e)=>s+this.liveBaseAmount(e),0); },
     get categoryBreakdown(){
       const map = {};
-      this.monthExpenses.forEach(e=>{ map[e.catId] = (map[e.catId]||0) + this.liveBaseAmount(e); });
+      this.periodExpenses.forEach(e=>{ map[e.catId] = (map[e.catId]||0) + this.liveBaseAmount(e); });
       return Object.entries(map).map(([catId,total])=>({catId, total, cat:this.catInfo(catId)})).sort((a,b)=>b.total-a.total);
     },
     get recurringList(){
@@ -646,11 +714,17 @@ document.addEventListener('alpine:init', () => {
         </div>
 
         <div class="filter-row">
-          <button class="chip" :class="filterPeriod==='week'&&'active'" @click="filterPeriod='week'">Неделя</button>
-          <button class="chip" :class="filterPeriod==='month'&&'active'" @click="filterPeriod='month'">Месяц</button>
-          <button class="chip" :class="filterPeriod==='all'&&'active'" @click="filterPeriod='all'">Всё время</button>
+          <button class="chip" :class="filterPeriod==='day'&&'active'" @click="setPeriod('day')">День</button>
+          <button class="chip" :class="filterPeriod==='week'&&'active'" @click="setPeriod('week')">Неделя</button>
+          <button class="chip" :class="filterPeriod==='month'&&'active'" @click="setPeriod('month')">Месяц</button>
+          <button class="chip" :class="filterPeriod==='all'&&'active'" @click="setPeriod('all')">Всё время</button>
+          <button class="chip" :class="filterPeriod==='range'&&'active'" @click="setPeriod('range')">Период</button>
           <button class="chip" :class="filterType==='one'&&'active'" @click="filterType = filterType==='one'?'all':'one'">Разовые</button>
           <button class="chip" :class="filterType==='recurring'&&'active'" @click="filterType = filterType==='recurring'?'all':'recurring'">Регулярные</button>
+        </div>
+        <div class="filter-row" x-show="filterPeriod==='range'" x-cloak>
+          <input type="date" class="input" style="max-width:160px" x-model="customStartDate" @change="recalcAll()">
+          <input type="date" class="input" style="max-width:160px" x-model="customEndDate" @change="recalcAll()">
         </div>
 
         <div class="card" style="padding:8px 16px">
@@ -686,10 +760,21 @@ document.addEventListener('alpine:init', () => {
       <!-- STATS TAB -->
       <div x-show="tab==='stats'" class="stack">
         <div class="kpi-grid">
-          <div class="kpi"><div class="faint">Всего за месяц</div><div class="v" x-text="fmt(monthTotal, baseCurrency)"></div></div>
+          <div class="kpi"><div class="faint">Всего за период</div><div class="v" x-text="fmt(monthTotal, baseCurrency)"></div></div>
           <div class="kpi"><div class="faint">Разовые</div><div class="v" x-text="fmt(oneTimeTotal, baseCurrency)"></div></div>
           <div class="kpi"><div class="faint">Регулярные</div><div class="v" x-text="fmt(recurringTotal, baseCurrency)"></div></div>
           <div class="kpi"><div class="faint">Категорий</div><div class="v" x-text="categoryBreakdown.length"></div></div>
+        </div>
+        <div class="filter-row">
+          <button class="chip" :class="filterPeriod==='day'&&'active'" @click="setPeriod('day')">День</button>
+          <button class="chip" :class="filterPeriod==='week'&&'active'" @click="setPeriod('week')">Неделя</button>
+          <button class="chip" :class="filterPeriod==='month'&&'active'" @click="setPeriod('month')">Месяц</button>
+          <button class="chip" :class="filterPeriod==='all'&&'active'" @click="setPeriod('all')">Всё время</button>
+          <button class="chip" :class="filterPeriod==='range'&&'active'" @click="setPeriod('range')">Период</button>
+        </div>
+        <div class="filter-row" x-show="filterPeriod==='range'" x-cloak>
+          <input type="date" class="input" style="max-width:160px" x-model="customStartDate" @change="recalcAll()">
+          <input type="date" class="input" style="max-width:160px" x-model="customEndDate" @change="recalcAll()">
         </div>
         <div class="card">
           <div class="section-title" style="margin-bottom:10px">По категориям</div>
