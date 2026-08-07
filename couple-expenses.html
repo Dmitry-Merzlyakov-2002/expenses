@@ -470,9 +470,13 @@ document.addEventListener('alpine:init', () => {
     },
     recalcAll(){ this.$nextTick(()=>this.renderChart()); },
     liveBaseAmount(exp){
-      if(!this.rates.eur) return exp.baseAmount;
-      return this.convert(exp.amount, exp.currency.toLowerCase(), this.baseCurrency.toLowerCase());
-    },
+  // если уже приведено к baseCurrency – просто берем это
+  if(exp.baseCurrency && exp.baseCurrency.toLowerCase() === this.baseCurrency.toLowerCase()){
+    return exp.baseAmount;
+  }
+  if(!this.rates.eur) return exp.baseAmount;
+  return this.convert(exp.amount, exp.currency.toLowerCase(), this.baseCurrency.toLowerCase());
+} 
 
     catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
 
