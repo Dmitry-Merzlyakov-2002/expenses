@@ -476,7 +476,7 @@ document.addEventListener('alpine:init', () => {
   }
   if(!this.rates.eur) return exp.baseAmount;
   return this.convert(exp.amount, exp.currency.toLowerCase(), this.baseCurrency.toLowerCase());
-} 
+} ,
 
     catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
 
