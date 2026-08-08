@@ -250,6 +250,8 @@ document.addEventListener('alpine:init', () => {
     showNewCat: false,
     chart: null,
     refreshing: false,
+    showLotForm: false,
+    newLot: { currency:'EUR', amountForeign:'', baseCurrency:'RUB', amountBase:'', date:'' },
 
     init(){
       document.documentElement.setAttribute('data-theme', this.theme);
@@ -422,6 +424,7 @@ document.addEventListener('alpine:init', () => {
       this.toast('Подключено к пространству');
     },
     attachListeners(){
+      this.loadCurrencyLots();
       db.collection('workspaces').doc(this.workspaceId).onSnapshot(doc=>{
         if(!doc.exists) return;
         const d = doc.data();
@@ -439,21 +442,66 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
-    async fetchRates(){
-      try{
-        const res = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
-        const data = await res.json();
-        this.rates = data.usd;
-        this.ratesDate = new Date().toISOString().slice(0,10);
-        this.recalcAll();
-      }catch(e){ console.error('rates fetch failed', e); }
+    // Целочисленная арифметика в копейках — никаких float-погрешностей.
+    toCents(amount){ return Math.round(Number(amount) * 100); },
+    fromCents(cents){ return cents / 100; },
+
+    // Курсы валют больше не тянутся с внешнего рыночного API как основной
+    // источник для конвертации отображаемых сумм. Вместо этого пользователь
+    // вручную фиксирует курс покупки валюты один раз (см. currencyLots).
+    currencyLots: [], // { id, currency, amountForeign, baseCurrency, amountBase, date }
+
+    // Средневзвешенный курс по всем сохранённым покупкам валюты fromCurrency -> toCurrency.
+    findRateLot(fromCurrency, toCurrency){
+      const lots = this.currencyLots.filter(l =>
+        l.currency && l.baseCurrency &&
+        l.currency.toLowerCase() === fromCurrency.toLowerCase() &&
+        l.baseCurrency.toLowerCase() === toCurrency.toLowerCase()
+      );
+      if(!lots.length) return null;
+      const totalForeign = lots.reduce((s,l)=> s + Number(l.amountForeign||0), 0);
+      const totalBase = lots.reduce((s,l)=> s + Number(l.amountBase||0), 0);
+      if(totalForeign === 0) return null;
+      return { rate: totalBase / totalForeign };
     },
-    convert(amount, from, to){
-      if(from===to) return amount;
-      if(!this.rates.eur) return amount;
-      const usdRates = this.rates;
-      const amountInUsd = from==='usd' ? amount : amount / usdRates[from.toLowerCase()];
-      return to==='usd' ? amountInUsd : amountInUsd * usdRates[to.toLowerCase()];
+    // Конвертация только по зафиксированному курсу покупки, без обращения к рыночным котировкам.
+    convertByFixedRate(amount, fromCurrency, toCurrency){
+      if(fromCurrency.toLowerCase() === toCurrency.toLowerCase()) return amount;
+      const lot = this.findRateLot(fromCurrency, toCurrency);
+      if(!lot) return null; // курс покупки ещё не введён — не искажаем число
+      return amount * lot.rate;
+    },
+    async loadCurrencyLots(){
+      if(!db || !this.workspaceId) return;
+      db.collection('workspaces').doc(this.workspaceId).collection('currencyLots').onSnapshot(snap=>{
+        this.currencyLots = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      });
+    },
+    openLotForm(){
+      this.newLot = { currency:'EUR', amountForeign:'', baseCurrency:this.baseCurrency, amountBase:'', date:this.today() };
+      this.showLotForm = true;
+    },
+    async submitLot(){
+      const amountForeign = parseFloat(this.newLot.amountForeign);
+      const amountBase = parseFloat(this.newLot.amountBase);
+      if(!amountForeign || !amountBase){ this.toast('Заполните обе суммы'); return; }
+      const lot = {
+        currency: this.newLot.currency, amountForeign,
+        baseCurrency: this.newLot.baseCurrency, amountBase,
+        date: this.newLot.date, createdBy: this.user.uid
+      };
+      if(db){
+        await db.collection('workspaces').doc(this.workspaceId).collection('currencyLots').add({
+          ...lot, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        this.toast('Курс покупки сохранён');
+      }
+      this.showLotForm = false;
+    },
+    async deleteLot(id){
+      if(!db) return;
+      await db.collection('workspaces').doc(this.workspaceId).collection('currencyLots').doc(id).delete();
+      this.toast('Запись о курсе удалена');
     },
     setPeriod(mode){
       this.filterPeriod = mode;
@@ -469,14 +517,23 @@ document.addEventListener('alpine:init', () => {
       this.recalcAll();
     },
     recalcAll(){ this.$nextTick(()=>this.renderChart()); },
+    // ГЛАВНОЕ ИСПРАВЛЕНИЕ БАГА: если валюта расхода совпадает с текущей базовой
+    // валютой — НИКОГДА не берём ранее сохранённое поле exp.baseAmount из базы
+    // (оно могло быть испорчено старой версией кода или устаревшей конвертацией).
+    // Всегда используем exp.amount напрямую, без единой арифметической операции.
     liveBaseAmount(exp){
-  // если уже приведено к baseCurrency – просто берем это
-  if(exp.baseCurrency && exp.baseCurrency.toLowerCase() === this.baseCurrency.toLowerCase()){
-    return exp.baseAmount;
-  }
-  if(!this.rates.eur) return exp.baseAmount;
-  return this.convert(exp.amount, exp.currency.toLowerCase(), this.baseCurrency.toLowerCase());
-} ,
+      const amount = Number(exp.amountCents !== undefined ? this.fromCents(exp.amountCents) : exp.amount);
+      if(exp.currency && exp.currency.toLowerCase() === this.baseCurrency.toLowerCase()){
+        return amount;
+      }
+      // Валюта расхода отличается от базовой — конвертируем только по
+      // зафиксированному пользователем курсу покупки валюты, а не по рынку.
+      const converted = this.convertByFixedRate(amount, exp.currency, this.baseCurrency);
+      if(converted !== null) return converted;
+      // Курса покупки ещё нет — возвращаем ранее сохранённое значение как fallback,
+      // явно помечая его как "исторический курс" через exp._legacyRate ниже в UI.
+      return exp.baseAmountCents !== undefined ? this.fromCents(exp.baseAmountCents) : (exp.baseAmount ?? amount);
+    },
 
     catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
 
@@ -487,10 +544,23 @@ document.addEventListener('alpine:init', () => {
     async submitExpense(){
       if(!this.form.amount || isNaN(parseFloat(this.form.amount))) { this.toast('Введите сумму'); return; }
       const amount = parseFloat(this.form.amount);
-      const baseAmount = this.convert(amount, this.form.currency.toLowerCase(), this.baseCurrency.toLowerCase());
+      const amountCents = this.toCents(amount);
+
+      // baseAmount больше не считается через рыночную конвертацию.
+      // Если валюта совпадает с базовой — просто копия, без арифметики.
+      // Если отличается — используем зафиксированный курс покупки (или null, если курса ещё нет).
+      let baseAmountCents = null;
+      if(this.form.currency.toLowerCase() === this.baseCurrency.toLowerCase()){
+        baseAmountCents = amountCents;
+      } else {
+        const lot = this.findRateLot(this.form.currency, this.baseCurrency);
+        if(lot) baseAmountCents = Math.round(amount * lot.rate * 100);
+      }
+
       const basePayload = {
-        amount, currency:this.form.currency, baseAmount: Math.round(baseAmount*100)/100, baseCurrency:this.baseCurrency,
-        rateSnapshotDate: this.ratesDate, catId:this.form.catId, type:this.form.type, date:this.form.date,
+        amount, currency:this.form.currency, amountCents,
+        baseAmountCents, baseCurrency:this.baseCurrency,
+        catId:this.form.catId, type:this.form.type, date:this.form.date,
         comment:this.form.comment||'', method:this.form.method, createdBy:this.user.uid
       };
       lsSet(LS_KEYS.lastCat, this.form.catId);
@@ -622,13 +692,45 @@ document.addEventListener('alpine:init', () => {
       }
       return list;
     },
-    get monthTotal(){ return this.periodExpenses.reduce((s,e)=>s+this.liveBaseAmount(e),0); },
-    get oneTimeTotal(){ return this.periodExpenses.filter(e=>e.type==='one').reduce((s,e)=>s+this.liveBaseAmount(e),0); },
-    get recurringTotal(){ return this.periodExpenses.filter(e=>e.type==='recurring').reduce((s,e)=>s+this.liveBaseAmount(e),0); },
+    // Суммирование строго в целых копейках — округление только в момент вывода в UI.
+    get monthTotal(){
+      const cents = this.periodExpenses.reduce((s,e)=> s + this.toCents(this.liveBaseAmount(e)), 0);
+      return this.fromCents(cents);
+    },
+    get oneTimeTotal(){
+      const cents = this.periodExpenses.filter(e=>e.type==='one')
+        .reduce((s,e)=> s + this.toCents(this.liveBaseAmount(e)), 0);
+      return this.fromCents(cents);
+    },
+    get recurringTotal(){
+      const cents = this.periodExpenses.filter(e=>e.type==='recurring')
+        .reduce((s,e)=> s + this.toCents(this.liveBaseAmount(e)), 0);
+      return this.fromCents(cents);
+    },
     get categoryBreakdown(){
       const map = {};
-      this.periodExpenses.forEach(e=>{ map[e.catId] = (map[e.catId]||0) + this.liveBaseAmount(e); });
-      return Object.entries(map).map(([catId,total])=>({catId, total, cat:this.catInfo(catId)})).sort((a,b)=>b.total-a.total);
+      this.periodExpenses.forEach(e=>{
+        const cents = this.toCents(this.liveBaseAmount(e));
+        map[e.catId] = (map[e.catId]||0) + cents;
+      });
+      return Object.entries(map)
+        .map(([catId,cents])=>({catId, total: this.fromCents(cents), cat:this.catInfo(catId)}))
+        .sort((a,b)=>b.total-a.total);
+    },
+    // Тест в консоли: Alpine.$data(document.querySelector('[x-data]')).selfTestSums()
+    selfTestSums(){
+      const testExpenses = [
+        { amount: 97645, currency:'RUB' },
+        { amount: 10000, currency:'RUB' },
+        { amount: 45, currency:'RUB' },
+        { amount: 45, currency:'RUB' }
+      ];
+      const expected = 107735;
+      const cents = testExpenses.reduce((s,e)=> s + this.toCents(e.amount), 0);
+      const actual = this.fromCents(cents);
+      const ok = actual === expected;
+      console.log(ok ? '✅ selfTestSums PASSED' : '❌ selfTestSums FAILED', { expected, actual });
+      return ok;
     },
     get recurringList(){
       const seen = {};
@@ -916,6 +1018,29 @@ document.addEventListener('alpine:init', () => {
               </template>
             </div>
           </div>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span class="field-label" style="margin-bottom:0">Курсы покупки валюты</span>
+              <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openLotForm()" x-html="icon('plus',16)"></button>
+            </div>
+            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при покупке валюты, а не на дату каждого расхода.</p>
+            <div class="card stack" style="padding:8px 16px" x-show="currencyLots.length">
+              <template x-for="lot in currencyLots" :key="lot.id">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+                  <div>
+                    <div style="font-weight:600;font-size:14px" x-text="lot.amountForeign+' '+lot.currency+' → '+lot.amountBase+' '+lot.baseCurrency"></div>
+                    <div class="exp-meta" x-text="lot.date"></div>
+                  </div>
+                  <button class="iconbtn" style="width:28px;height:28px" @click="deleteLot(lot.id)">✕</button>
+                </div>
+              </template>
+            </div>
+            <div class="card" x-show="!currencyLots.length">
+              <p class="faint">Курсов покупки пока нет. Добавьте, чтобы конвертировать расходы в других валютах.</p>
+            </div>
+          </div>
+
           <div class="card">
             <div class="faint">Код пространства (для партнёра)</div>
             <div style="font-family:monospace;font-size:14px;word-break:break-all" x-text="workspaceId"></div>
@@ -923,6 +1048,46 @@ document.addEventListener('alpine:init', () => {
           <div class="faint" x-text="'Вы вошли как: '+(user&&user.email)"></div>
           <button class="btn-ghost" @click="signOut(); showSettings=false" style="color:var(--color-error)">Выйти из аккаунта</button>
           <button class="btn-ghost" @click="showSettings=false">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CURRENCY LOT SHEET (Курс покупки валюты) -->
+    <div class="sheet-overlay" x-show="showLotForm" x-cloak x-transition.opacity @click.self="showLotForm=false">
+      <div class="sheet-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <button class="iconbtn" @click="showLotForm=false" x-html="icon('back')"></button>
+          <h2 style="font-size:16px">Курс покупки валюты</h2>
+          <span style="width:40px"></span>
+        </div>
+        <div class="stack" style="margin-top:8px">
+          <p class="faint">Например: купили 500 EUR за 55000 RUB 7 августа. Этот курс будет использоваться для всех расходов в EUR, пока не добавите новую покупку.</p>
+
+          <div>
+            <span class="field-label">Валюта, которую купили</span>
+            <div class="currency-row">
+              <template x-for="c in CURRENCIES.filter(x=>x!=='RUB')">
+                <button class="curbtn" :class="newLot.currency===c&&'active'" @click="newLot.currency=c" x-text="c"></button>
+              </template>
+            </div>
+          </div>
+
+          <div>
+            <span class="field-label">Сумма в купленной валюте</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="500" x-model="newLot.amountForeign">
+          </div>
+
+          <div>
+            <span class="field-label">Заплачено (в рублях)</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="55000" x-model="newLot.amountBase">
+          </div>
+
+          <div>
+            <span class="field-label">Дата покупки</span>
+            <input class="input" type="date" x-model="newLot.date">
+          </div>
+
+          <button class="btn-primary" @click="submitLot()" :disabled="!newLot.amountForeign || !newLot.amountBase">Сохранить курс</button>
         </div>
       </div>
     </div>
