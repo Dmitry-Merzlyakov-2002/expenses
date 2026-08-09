@@ -204,20 +204,21 @@ async function ensureFirebase(){
     if(!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
     auth = window.firebase.auth();
     db = window.firebase.firestore();
-    // Исправление обрывов WebChannel (ошибки "Fetch failed loading" на Listen/Write):
-    // некоторые сети (Wi-Fi роутеры с DPI, VPN, мобильные операторы, режим отладки по Wi-Fi)
-    // рвут потоковые HTTP/2-соединения, которые Firestore использует по умолчанию.
-    // experimentalAutoDetectLongPolling заставляет SDK автоматически переключиться
-    // на обычный long-polling, если стриминг недоступен — это устраняет большинство
-    // таких обрывов без потери функциональности оффлайн-режима.
+    // ИСПРАВЛЕНИЕ "INTERNAL ASSERTION FAILED: Unexpected state":
+    // старый enablePersistence({synchronizeTabs:true}) конфликтует с обрывами
+    // WebChannel-стрима (нестабильная сеть, debug по Wi-Fi, DPI) — именно это
+    // вызывает внутренний краш SDK во время записи. Настраиваем офлайн-кэш и
+    // сетевой транспорт через db.settings() ДО первого использования db —
+    // это единственный современный способ и одновременно устраняет
+    // deprecation-warning про enableMultiTabIndexedDbPersistence.
     db.settings({
+      cache: {
+        kind: 'persistent',
+        tabManager: { kind: 'multiple' }
+      },
       experimentalAutoDetectLongPolling: true,
       merge: true
     });
-    persistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-      console.warn('Firestore persistence unavailable:', err.code);
-    });
-    await persistenceReady;
     firebaseReady = true;
     return true;
   }catch(e){
@@ -552,8 +553,6 @@ document.addEventListener('alpine:init', () => {
         createdBy: this.user.uid
       };
       console.log('[submitFx] сохраняем', payload);
-      // Таймаут: если Firestore не ответил за 10 секунд (обрыв канала/сети),
-      // не даём кнопке зависнуть навечно — показываем ошибку и снимаем спиннер.
       const timeoutMs = 10000;
       let timedOut = false;
       const timeoutId = setTimeout(()=>{
@@ -624,7 +623,6 @@ document.addEventListener('alpine:init', () => {
     liveBaseAmount(exp){
       return this.convertToBase(exp.amount, exp.currency);
     },
-
     catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
 
     openAdd(prefill){
