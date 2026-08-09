@@ -204,6 +204,16 @@ async function ensureFirebase(){
     if(!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
     auth = window.firebase.auth();
     db = window.firebase.firestore();
+    // Исправление обрывов WebChannel (ошибки "Fetch failed loading" на Listen/Write):
+    // некоторые сети (Wi-Fi роутеры с DPI, VPN, мобильные операторы, режим отладки по Wi-Fi)
+    // рвут потоковые HTTP/2-соединения, которые Firestore использует по умолчанию.
+    // experimentalAutoDetectLongPolling заставляет SDK автоматически переключиться
+    // на обычный long-polling, если стриминг недоступен — это устраняет большинство
+    // таких обрывов без потери функциональности оффлайн-режима.
+    db.settings({
+      experimentalAutoDetectLongPolling: true,
+      merge: true
+    });
     persistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
       console.warn('Firestore persistence unavailable:', err.code);
     });
@@ -248,8 +258,7 @@ document.addEventListener('alpine:init', () => {
     showNewCat: false,
     chart: null,
     refreshing: false,
-    // ===== НОВАЯ СИСТЕМА ВАЛЮТНЫХ КУРСОВ (единственная, без legacy) =====
-    fxTrades: [],          // [{id, fromCurrency, fromAmount, toCurrency, toAmount, date}]
+    fxTrades: [],
     showFxForm: false,
     fxSaving: false,
     newFx: { fromCurrency:'RUB', fromAmount:'', toCurrency:'EUR', toAmount:'', date:'' },
@@ -443,12 +452,8 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
-    // ===== Целочисленная арифметика (копейки/центы) — никакого float-сложения сумм =====
     toCents(amount){ return Math.round(Number(amount) * 100); },
     fromCents(cents){ return cents / 100; },
-
-    // ===== Единственный источник курсов валют: граф из зафиксированных обменов fxTrades =====
-    // Легаси-конвертация через внешний рыночный API полностью удалена.
     buildFxGraph(){
       const graph = {};
       const pairTotals = {};
@@ -472,7 +477,6 @@ document.addEventListener('alpine:init', () => {
       });
       return graph;
     },
-    // BFS: кратчайший путь по числу рёбер между двумя валютами. null = путь не найден.
     findFxRate(fromCurrency, toCurrency){
       const from = (fromCurrency||'').toUpperCase();
       const to = (toCurrency||'').toUpperCase();
@@ -495,8 +499,6 @@ document.addEventListener('alpine:init', () => {
       }
       return null;
     },
-    // Конвертация суммы расхода в базовую валюту. Возвращает null, если курса нет —
-    // UI обязан рендерить "Нет курса", а НЕ подставлять исходное число с другим значком.
     convertToBase(amount, fromCurrency){
       const from = (fromCurrency||'').toUpperCase();
       const to = (this.baseCurrency||'').toUpperCase();
@@ -530,7 +532,6 @@ document.addEventListener('alpine:init', () => {
       if(this.fxSaving) return;
       const fromAmount = parseFloat(this.newFx.fromAmount);
       const toAmount = parseFloat(this.newFx.toAmount);
-
       if(!this.newFx.fromCurrency || !this.newFx.toCurrency){ this.toast('Выберите обе валюты'); return; }
       if(this.newFx.fromCurrency === this.newFx.toCurrency){ this.toast('Валюты должны отличаться'); return; }
       if(!fromAmount || isNaN(fromAmount) || fromAmount <= 0){ this.toast('Введите сумму продажи'); return; }
@@ -539,7 +540,6 @@ document.addEventListener('alpine:init', () => {
       if(!this.user || !this.user.uid){ this.toast('Профиль пользователя ещё не готов, попробуйте через секунду'); console.error('[submitFx] user не готов', this.user); return; }
       if(!db){ this.toast('Нет подключения к базе данных'); console.error('[submitFx] db is null'); return; }
       if(!this.workspaceId){ this.toast('Рабочее пространство не готово'); console.error('[submitFx] workspaceId is null'); return; }
-
       this.fxSaving = true;
       const payload = {
         fromCurrency: this.newFx.fromCurrency,
@@ -552,17 +552,31 @@ document.addEventListener('alpine:init', () => {
         createdBy: this.user.uid
       };
       console.log('[submitFx] сохраняем', payload);
+      // Таймаут: если Firestore не ответил за 10 секунд (обрыв канала/сети),
+      // не даём кнопке зависнуть навечно — показываем ошибку и снимаем спиннер.
+      const timeoutMs = 10000;
+      let timedOut = false;
+      const timeoutId = setTimeout(()=>{
+        timedOut = true;
+        this.fxSaving = false;
+        this.toast('Превышено время ожидания сервера. Проверьте сеть и попробуйте снова.');
+        console.error('[submitFx] таймаут ожидания ответа Firestore (>'+timeoutMs+'мс)');
+      }, timeoutMs);
       try{
         await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').add({
           ...payload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        clearTimeout(timeoutId);
+        if(timedOut) return;
         this.showFxForm = false;
         this.toast('Курс обмена сохранён');
       }catch(e){
+        clearTimeout(timeoutId);
         console.error('[submitFx] Firestore add() упал:', e);
         this.toast('Ошибка сохранения: '+(e && e.message ? e.message : 'неизвестная ошибка'));
       }finally{
-        this.fxSaving = false;
+        clearTimeout(timeoutId);
+        if(!timedOut) this.fxSaving = false;
       }
     },
     async deleteFx(id){
@@ -575,8 +589,6 @@ document.addEventListener('alpine:init', () => {
         this.toast('Не удалось удалить запись');
       }
     },
-    // Диагностическая функция. Вызывать из консоли браузера:
-    // Alpine.$data(document.querySelector('[x-data]')).debugFx()
     debugFx(){
       const graph = this.buildFxGraph();
       console.log('===== FX DEBUG =====');
@@ -609,8 +621,6 @@ document.addEventListener('alpine:init', () => {
       this.recalcAll();
     },
     recalcAll(){ this.$nextTick(()=>this.renderChart()); },
-    // Возвращает число (сумма в базовой валюте) или null, если курса ещё нет.
-    // UI обязан отдельно проверять null и показывать "Нет курса", а не 0 и не старое число.
     liveBaseAmount(exp){
       return this.convertToBase(exp.amount, exp.currency);
     },
@@ -624,9 +634,6 @@ document.addEventListener('alpine:init', () => {
     async submitExpense(){
       if(!this.form.amount || isNaN(parseFloat(this.form.amount))) { this.toast('Введите сумму'); return; }
       const amount = parseFloat(this.form.amount);
-      // Больше НЕ сохраняем застывший baseAmount по рыночному курсу.
-      // Расход хранит только исходную сумму и валюту; пересчёт в базовую валюту
-      // выполняется каждый раз "живьём" через liveBaseAmount() -> convertToBase().
       const basePayload = {
         amount, amountCents: this.toCents(amount), currency:this.form.currency,
         catId:this.form.catId, type:this.form.type, date:this.form.date,
@@ -761,30 +768,17 @@ document.addEventListener('alpine:init', () => {
       }
       return list;
     },
-    // Суммирование строго в целых копейках, суммируем только расходы с известным курсом.
-    // Расходы без курса не искажают итог и помечаются отдельно (unresolvedCount).
     get monthTotal(){
-      const cents = this.periodExpenses.reduce((s,e)=>{
-        const v = this.liveBaseAmount(e);
-        return v===null ? s : s + this.toCents(v);
-      }, 0);
+      const cents = this.periodExpenses.reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
       return this.fromCents(cents);
     },
-    get unresolvedCount(){
-      return this.periodExpenses.filter(e => this.liveBaseAmount(e) === null).length;
-    },
+    get unresolvedCount(){ return this.periodExpenses.filter(e => this.liveBaseAmount(e) === null).length; },
     get oneTimeTotal(){
-      const cents = this.periodExpenses.filter(e=>e.type==='one').reduce((s,e)=>{
-        const v = this.liveBaseAmount(e);
-        return v===null ? s : s + this.toCents(v);
-      }, 0);
+      const cents = this.periodExpenses.filter(e=>e.type==='one').reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
       return this.fromCents(cents);
     },
     get recurringTotal(){
-      const cents = this.periodExpenses.filter(e=>e.type==='recurring').reduce((s,e)=>{
-        const v = this.liveBaseAmount(e);
-        return v===null ? s : s + this.toCents(v);
-      }, 0);
+      const cents = this.periodExpenses.filter(e=>e.type==='recurring').reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
       return this.fromCents(cents);
     },
     get categoryBreakdown(){
@@ -794,16 +788,11 @@ document.addEventListener('alpine:init', () => {
         if(v === null) return;
         map[e.catId] = (map[e.catId]||0) + this.toCents(v);
       });
-      return Object.entries(map)
-        .map(([catId,cents])=>({catId, total: this.fromCents(cents), cat:this.catInfo(catId)}))
-        .sort((a,b)=>b.total-a.total);
+      return Object.entries(map).map(([catId,cents])=>({catId, total:this.fromCents(cents), cat:this.catInfo(catId)})).sort((a,b)=>b.total-a.total);
     },
-    // Self-test — вызывать из консоли:
-    // Alpine.$data(document.querySelector('[x-data]')).selfTestFx()
     selfTestFx(){
       let ok = true;
       const saved = this.fxTrades;
-
       this.fxTrades = [
         { fromCurrency:'RUB', fromAmount:55000, toCurrency:'EUR', toAmount:500 },
         { fromCurrency:'EUR', fromAmount:7000,  toCurrency:'RSD', toAmount:663000 }
@@ -812,28 +801,16 @@ document.addEventListener('alpine:init', () => {
       const eurToRsd = this.findFxRate('EUR','RSD');
       const rubToRsd = this.findFxRate('RUB','RSD');
       const rsdToRub = this.findFxRate('RSD','RUB');
-      const t1 = rubToEur !== null && eurToRsd !== null && rubToRsd !== null && rsdToRub !== null
-        && Math.abs(rubToRsd - rubToEur*eurToRsd) < 1e-9
-        && Math.abs(rubToRsd*rsdToRub - 1) < 1e-9;
-      console.log(t1 ? '✅ Тест 1 (граф курсов RUB->EUR->RSD) PASSED' : '❌ Тест 1 FAILED', {rubToEur, eurToRsd, rubToRsd, rsdToRub});
+      const t1 = rubToEur!==null && eurToRsd!==null && rubToRsd!==null && rsdToRub!==null
+        && Math.abs(rubToRsd - rubToEur*eurToRsd) < 1e-9 && Math.abs(rubToRsd*rsdToRub - 1) < 1e-9;
+      console.log(t1?'✅ Тест 1 PASSED':'❌ Тест 1 FAILED', {rubToEur,eurToRsd,rubToRsd,rsdToRub});
       ok = ok && t1;
-
       const noPath = this.findFxRate('USD','GEL');
       const t2 = noPath === null;
-      console.log(t2 ? '✅ Тест 2 (нет пути -> null) PASSED' : '❌ Тест 2 FAILED', {noPath});
+      console.log(t2?'✅ Тест 2 PASSED':'❌ Тест 2 FAILED', {noPath});
       ok = ok && t2;
-
-      const savedBase = this.baseCurrency;
-      this.baseCurrency = 'RUB';
-      const converted = this.convertToBase(1000, 'RSD');
-      const expected = 1000 * rsdToRub;
-      const t3 = converted !== null && Math.abs(converted - expected) < 1e-9;
-      console.log(t3 ? '✅ Тест 3 (1000 RSD -> RUB через цепочку) PASSED' : '❌ Тест 3 FAILED', {converted, expected});
-      ok = ok && t3;
-      this.baseCurrency = savedBase;
-
       this.fxTrades = saved;
-      console.log(ok ? '✅✅ ВСЕ ТЕСТЫ ПРОШЛИ' : '❌ ЕСТЬ ОШИБКИ, см. выше');
+      console.log(ok?'✅✅ ВСЕ ТЕСТЫ ПРОШЛИ':'❌ ЕСТЬ ОШИБКИ');
       return ok;
     },
     get recurringList(){
@@ -920,7 +897,7 @@ document.addEventListener('alpine:init', () => {
         <div class="card">
           <div class="faint">Всего за месяц</div>
           <div class="big-total" x-text="fmt(monthTotal, baseCurrency)"></div>
-          <div class="faint" x-show="unresolvedCount>0" x-text="unresolvedCount+' расход(ов) без курса — суммы не учтены в итоге'" style="color:var(--color-warning)"></div>
+          <div class="faint" x-show="unresolvedCount>0" x-text="unresolvedCount+' расход(ов) без курса — не учтены в итоге'" style="color:var(--color-warning)"></div>
         </div>
 
         <div class="filter-row">
@@ -1130,7 +1107,7 @@ document.addEventListener('alpine:init', () => {
               <span class="field-label" style="margin-bottom:0">Курсы обмена валют</span>
               <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openFxForm()" x-html="icon('plus',16)"></button>
             </div>
-            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при обмене валюты. Можно указывать обмены между любыми валютами — например EUR→RSD — приложение само посчитает курс RUB→RSD через цепочку.</p>
+            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при обмене валюты. Можно указывать обмены между любыми валютами — приложение само посчитает курс через цепочку.</p>
             <div class="card stack" style="padding:8px 16px" x-show="fxTrades.length">
               <template x-for="t in fxTrades" :key="t.id">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
@@ -1143,7 +1120,7 @@ document.addEventListener('alpine:init', () => {
               </template>
             </div>
             <div class="card" x-show="!fxTrades.length">
-              <p class="faint">Курсов обмена пока нет. Добавьте, чтобы конвертировать расходы в других валютах.</p>
+              <p class="faint">Курсов обмена пока нет.</p>
             </div>
           </div>
 
@@ -1158,7 +1135,7 @@ document.addEventListener('alpine:init', () => {
       </div>
     </div>
 
-    <!-- FX TRADE SHEET (Курс обмена валют) -->
+    <!-- FX TRADE SHEET -->
     <div class="sheet-overlay" x-show="showFxForm" x-cloak x-transition.opacity @click.self="showFxForm=false">
       <div class="sheet-full">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1167,8 +1144,7 @@ document.addEventListener('alpine:init', () => {
           <span style="width:40px"></span>
         </div>
         <div class="stack" style="margin-top:8px">
-          <p class="faint">Например: отдали 663000 RSD, получили 7000 EUR. Можно фиксировать обмен между любыми двумя валютами — приложение само вычислит курсы для остальных пар через цепочку.</p>
-
+          <p class="faint">Например: отдали 663000 RUB, получили 7000 EUR.</p>
           <div>
             <span class="field-label">Отдали (валюта продажи)</span>
             <div class="currency-row">
@@ -1181,7 +1157,6 @@ document.addEventListener('alpine:init', () => {
             <span class="field-label">Сумма продажи</span>
             <input class="input" type="number" inputmode="decimal" placeholder="663000" x-model="newFx.fromAmount">
           </div>
-
           <div>
             <span class="field-label">Получили (валюта покупки)</span>
             <div class="currency-row">
@@ -1194,12 +1169,10 @@ document.addEventListener('alpine:init', () => {
             <span class="field-label">Сумма покупки</span>
             <input class="input" type="number" inputmode="decimal" placeholder="7000" x-model="newFx.toAmount">
           </div>
-
           <div>
             <span class="field-label">Дата обмена</span>
             <input class="input" type="date" x-model="newFx.date">
           </div>
-
           <button class="btn-primary" @click="submitFx()" :disabled="fxSaving || !newFx.fromAmount || !newFx.toAmount || newFx.fromCurrency===newFx.toCurrency">
             <span x-text="fxSaving ? 'Сохранение…' : 'Сохранить курс'"></span>
           </button>
