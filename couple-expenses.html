@@ -250,8 +250,11 @@ document.addEventListener('alpine:init', () => {
     showNewCat: false,
     chart: null,
     refreshing: false,
-    showLotForm: false,
-    newLot: { currency:'EUR', amountForeign:'', baseCurrency:'RUB', amountBase:'', date:'' },
+    // ===== Валютные обмены (граф курсов) =====
+    fxTrades: [], // { id, fromCurrency, fromAmount, toCurrency, toAmount, date }
+    showFxForm: false,
+    fxSaving: false,
+    newFx: { fromCurrency:'RUB', fromAmount:'', toCurrency:'EUR', toAmount:'', date:'' },
 
     init(){
       document.documentElement.setAttribute('data-theme', this.theme);
@@ -424,7 +427,7 @@ document.addEventListener('alpine:init', () => {
       this.toast('Подключено к пространству');
     },
     attachListeners(){
-      this.loadCurrencyLots();
+      this.loadFxTrades();
       db.collection('workspaces').doc(this.workspaceId).onSnapshot(doc=>{
         if(!doc.exists) return;
         const d = doc.data();
@@ -442,66 +445,111 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
-    // Целочисленная арифметика в копейках — никаких float-погрешностей.
+    // Целочисленная арифметика в копейках/центах — исключает погрешности float.
     toCents(amount){ return Math.round(Number(amount) * 100); },
     fromCents(cents){ return cents / 100; },
 
-    // Курсы валют больше не тянутся с внешнего рыночного API как основной
-    // источник для конвертации отображаемых сумм. Вместо этого пользователь
-    // вручную фиксирует курс покупки валюты один раз (см. currencyLots).
-    currencyLots: [], // { id, currency, amountForeign, baseCurrency, amountBase, date }
-
-    // Средневзвешенный курс по всем сохранённым покупкам валюты fromCurrency -> toCurrency.
-    findRateLot(fromCurrency, toCurrency){
-      const lots = this.currencyLots.filter(l =>
-        l.currency && l.baseCurrency &&
-        l.currency.toLowerCase() === fromCurrency.toLowerCase() &&
-        l.baseCurrency.toLowerCase() === toCurrency.toLowerCase()
-      );
-      if(!lots.length) return null;
-      const totalForeign = lots.reduce((s,l)=> s + Number(l.amountForeign||0), 0);
-      const totalBase = lots.reduce((s,l)=> s + Number(l.amountBase||0), 0);
-      if(totalForeign === 0) return null;
-      return { rate: totalBase / totalForeign };
-    },
-    // Конвертация только по зафиксированному курсу покупки, без обращения к рыночным котировкам.
-    convertByFixedRate(amount, fromCurrency, toCurrency){
-      if(fromCurrency.toLowerCase() === toCurrency.toLowerCase()) return amount;
-      const lot = this.findRateLot(fromCurrency, toCurrency);
-      if(!lot) return null; // курс покупки ещё не введён — не искажаем число
-      return amount * lot.rate;
-    },
-    async loadCurrencyLots(){
-      if(!db || !this.workspaceId) return;
-      db.collection('workspaces').doc(this.workspaceId).collection('currencyLots').onSnapshot(snap=>{
-        this.currencyLots = snap.docs.map(d=>({id:d.id, ...d.data()}));
-      });
-    },
-    openLotForm(){
-      this.newLot = { currency:'EUR', amountForeign:'', baseCurrency:this.baseCurrency, amountBase:'', date:this.today() };
-      this.showLotForm = true;
-    },
-    async submitLot(){
-      const amountForeign = parseFloat(this.newLot.amountForeign);
-      const amountBase = parseFloat(this.newLot.amountBase);
-      if(!amountForeign || !amountBase){ this.toast('Заполните обе суммы'); return; }
-      const lot = {
-        currency: this.newLot.currency, amountForeign,
-        baseCurrency: this.newLot.baseCurrency, amountBase,
-        date: this.newLot.date, createdBy: this.user.uid
+    // ===== Граф валютных обменов =====
+    // Каждый fxTrade — направленное ребро: отдали fromAmount fromCurrency, получили toAmount toCurrency.
+    // Из него строим коэффициенты в обе стороны: rate(from->to) = toAmount/fromAmount, rate(to->from) = fromAmount/toAmount.
+    buildFxGraph(){
+      const graph = {}; // graph[CUR] = { OTHER_CUR: rate, ... }
+      const addEdge = (a, b, rate) => {
+        if(!graph[a]) graph[a] = {};
+        // если для пары уже есть курс — используем средневзвешенный (агрегируем по сумме, а не просто перезатираем)
+        graph[a][b] = rate;
       };
-      if(db){
-        await db.collection('workspaces').doc(this.workspaceId).collection('currencyLots').add({
-          ...lot, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        this.toast('Курс покупки сохранён');
-      }
-      this.showLotForm = false;
+      // Агрегируем все сделки между одной парой валют как средневзвешенный курс
+      const pairTotals = {}; // key "FROM|TO" -> { totalFrom, totalTo }
+      this.fxTrades.forEach(t=>{
+        const from = (t.fromCurrency||'').toUpperCase();
+        const to = (t.toCurrency||'').toUpperCase();
+        const fromAmount = Number(t.fromAmount);
+        const toAmount = Number(t.toAmount);
+        if(!from || !to || !fromAmount || !toAmount) return;
+        const key = from+'|'+to;
+        if(!pairTotals[key]) pairTotals[key] = { totalFrom:0, totalTo:0 };
+        pairTotals[key].totalFrom += fromAmount;
+        pairTotals[key].totalTo += toAmount;
+      });
+      Object.entries(pairTotals).forEach(([key, {totalFrom, totalTo}])=>{
+        const [from, to] = key.split('|');
+        if(totalFrom > 0) addEdge(from, to, totalTo/totalFrom);
+        if(totalTo > 0) addEdge(to, from, totalFrom/totalTo);
+      });
+      return graph;
     },
-    async deleteLot(id){
-      if(!db) return;
-      await db.collection('workspaces').doc(this.workspaceId).collection('currencyLots').doc(id).delete();
-      this.toast('Запись о курсе удалена');
+    // BFS-поиск кратчайшего пути (по числу рёбер) между двумя валютами в графе курсов,
+    // возвращает итоговый коэффициент умножения from->to, либо null если пути не существует.
+    findFxRate(fromCurrency, toCurrency){
+      const from = (fromCurrency||'').toUpperCase();
+      const to = (toCurrency||'').toUpperCase();
+      if(from === to) return 1;
+      const graph = this.buildFxGraph();
+      if(!graph[from]) return null;
+      const visited = new Set([from]);
+      const queue = [{ cur: from, rate: 1 }];
+      while(queue.length){
+        const { cur, rate } = queue.shift();
+        const neighbors = graph[cur] || {};
+        for(const [next, edgeRate] of Object.entries(neighbors)){
+          if(visited.has(next)) continue;
+          const newRate = rate * edgeRate;
+          if(next === to) return newRate;
+          visited.add(next);
+          queue.push({ cur: next, rate: newRate });
+        }
+      }
+      return null;
+    },
+    async loadFxTrades(){
+      if(!db || !this.workspaceId) return;
+      db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').orderBy('date','desc').onSnapshot(snap=>{
+        this.fxTrades = snap.docs.map(d=>({id:d.id, ...d.data()}));
+        this.recalcAll();
+      }, err => console.error('[fxTrades] snapshot error', err));
+    },
+    openFxForm(){
+      this.newFx = { fromCurrency:'RUB', fromAmount:'', toCurrency: this.baseCurrency==='RUB' ? 'EUR' : 'RUB', toAmount:'', date:this.today() };
+      this.showFxForm = true;
+    },
+    async submitFx(){
+      if(this.fxSaving) return;
+      const fromAmount = parseFloat(this.newFx.fromAmount);
+      const toAmount = parseFloat(this.newFx.toAmount);
+      if(!this.newFx.fromCurrency || !this.newFx.toCurrency){ this.toast('Выберите обе валюты'); return; }
+      if(this.newFx.fromCurrency === this.newFx.toCurrency){ this.toast('Валюты должны отличаться'); return; }
+      if(!fromAmount || isNaN(fromAmount) || fromAmount <= 0){ this.toast('Введите сумму продажи'); return; }
+      if(!toAmount || isNaN(toAmount) || toAmount <= 0){ this.toast('Введите сумму покупки'); return; }
+      if(!this.newFx.date){ this.toast('Укажите дату'); return; }
+      if(!db || !this.workspaceId){ this.toast('Нет подключения к базе, попробуйте позже'); return; }
+      this.fxSaving = true;
+      const payload = {
+        fromCurrency: this.newFx.fromCurrency, fromAmount,
+        toCurrency: this.newFx.toCurrency, toAmount,
+        date: this.newFx.date, createdBy: this.user ? this.user.uid : null
+      };
+      try{
+        await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').add({
+          ...payload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        this.showFxForm = false;
+        this.toast('Курс обмена сохранён');
+      }catch(e){
+        console.error('[submitFx] failed to save fx trade', e);
+        this.toast('Не удалось сохранить: '+(e && e.message ? e.message : 'ошибка сети'));
+      }finally{
+        this.fxSaving = false;
+      }
+    },
+    async deleteFx(id){
+      if(!db || !this.workspaceId){ this.toast('Удаление недоступно офлайн'); return; }
+      try{
+        await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').doc(id).delete();
+        this.toast('Запись удалена');
+      }catch(e){
+        this.toast('Не удалось удалить');
+      }
     },
     setPeriod(mode){
       this.filterPeriod = mode;
@@ -519,20 +567,23 @@ document.addEventListener('alpine:init', () => {
     recalcAll(){ this.$nextTick(()=>this.renderChart()); },
     // ГЛАВНОЕ ИСПРАВЛЕНИЕ БАГА: если валюта расхода совпадает с текущей базовой
     // валютой — НИКОГДА не берём ранее сохранённое поле exp.baseAmount из базы
-    // (оно могло быть испорчено старой версией кода или устаревшей конвертацией).
+    // (оно могло быть испорчено старой версией кода/старой конвертацией).
     // Всегда используем exp.amount напрямую, без единой арифметической операции.
     liveBaseAmount(exp){
-      const amount = Number(exp.amountCents !== undefined ? this.fromCents(exp.amountCents) : exp.amount);
-      if(exp.currency && exp.currency.toLowerCase() === this.baseCurrency.toLowerCase()){
+      const amount = Number(exp.amount);
+      if(exp.currency && exp.currency.toUpperCase() === this.baseCurrency.toUpperCase()){
         return amount;
       }
-      // Валюта расхода отличается от базовой — конвертируем только по
-      // зафиксированному пользователем курсу покупки валюты, а не по рынку.
-      const converted = this.convertByFixedRate(amount, exp.currency, this.baseCurrency);
-      if(converted !== null) return converted;
-      // Курса покупки ещё нет — возвращаем ранее сохранённое значение как fallback,
-      // явно помечая его как "исторический курс" через exp._legacyRate ниже в UI.
-      return exp.baseAmountCents !== undefined ? this.fromCents(exp.baseAmountCents) : (exp.baseAmount ?? amount);
+      // Валюта расхода отличается от базовой — конвертируем через граф
+      // зафиксированных пользователем курсов обмена (fxTrades), а не по рынку.
+      const rate = this.findFxRate(exp.currency, this.baseCurrency);
+      if(rate !== null){
+        return amount * rate;
+      }
+      // Пути в графе не нашли — используем ранее сохранённое legacy-значение как fallback,
+      // если оно есть (помечаем такие расходы как "исторический курс" в UI через exp._legacyRate).
+      exp._legacyRate = true;
+      return (exp.baseAmount !== undefined && exp.baseAmount !== null) ? exp.baseAmount : amount;
     },
 
     catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
@@ -547,18 +598,18 @@ document.addEventListener('alpine:init', () => {
       const amountCents = this.toCents(amount);
 
       // baseAmount больше не считается через рыночную конвертацию.
-      // Если валюта совпадает с базовой — просто копия, без арифметики.
-      // Если отличается — используем зафиксированный курс покупки (или null, если курса ещё нет).
-      let baseAmountCents = null;
-      if(this.form.currency.toLowerCase() === this.baseCurrency.toLowerCase()){
-        baseAmountCents = amountCents;
-      } else {
-        const lot = this.findRateLot(this.form.currency, this.baseCurrency);
-        if(lot) baseAmountCents = Math.round(amount * lot.rate * 100);
+      // Если валюта совпадает с базовой — просто копия, без единой арифметической операции.
+      // Если отличается — используем граф зафиксированных курсов обмена (fxTrades).
+      let baseAmount = amount;
+      if(this.form.currency.toUpperCase() !== this.baseCurrency.toUpperCase()){
+        const rate = this.findFxRate(this.form.currency, this.baseCurrency);
+        baseAmount = rate !== null ? amount * rate : null;
       }
+      const baseAmountCents = baseAmount !== null ? this.toCents(baseAmount) : null;
 
       const basePayload = {
         amount, currency:this.form.currency, amountCents,
+        baseAmount: baseAmount !== null ? this.fromCents(baseAmountCents) : null,
         baseAmountCents, baseCurrency:this.baseCurrency,
         catId:this.form.catId, type:this.form.type, date:this.form.date,
         comment:this.form.comment||'', method:this.form.method, createdBy:this.user.uid
@@ -692,7 +743,7 @@ document.addEventListener('alpine:init', () => {
       }
       return list;
     },
-    // Суммирование строго в целых копейках — округление только в момент вывода в UI.
+    // Суммирование строго в целых копейках — округление только на этапе вывода в UI.
     get monthTotal(){
       const cents = this.periodExpenses.reduce((s,e)=> s + this.toCents(this.liveBaseAmount(e)), 0);
       return this.fromCents(cents);
@@ -717,19 +768,41 @@ document.addEventListener('alpine:init', () => {
         .map(([catId,cents])=>({catId, total: this.fromCents(cents), cat:this.catInfo(catId)}))
         .sort((a,b)=>b.total-a.total);
     },
-    // Тест в консоли: Alpine.$data(document.querySelector('[x-data]')).selfTestSums()
+    // Тест в консоли браузера:
+    // Alpine.$data(document.querySelector('[x-data]')).selfTestSums()
     selfTestSums(){
-      const testExpenses = [
+      let ok = true;
+      // Тест 1: сумма 4 расходов в рублях без конвертации
+      const testExpensesRub = [
         { amount: 97645, currency:'RUB' },
         { amount: 10000, currency:'RUB' },
         { amount: 45, currency:'RUB' },
         { amount: 45, currency:'RUB' }
       ];
-      const expected = 107735;
-      const cents = testExpenses.reduce((s,e)=> s + this.toCents(e.amount), 0);
-      const actual = this.fromCents(cents);
-      const ok = actual === expected;
-      console.log(ok ? '✅ selfTestSums PASSED' : '❌ selfTestSums FAILED', { expected, actual });
+      const expectedRub = 107735;
+      const centsRub = testExpensesRub.reduce((s,e)=> s + this.toCents(e.amount), 0);
+      const actualRub = this.fromCents(centsRub);
+      const okRub = actualRub === expectedRub;
+      console.log(okRub ? '✅ Тест 1 (сумма в рублях) PASSED' : '❌ Тест 1 FAILED', { expectedRub, actualRub });
+      ok = ok && okRub;
+
+      // Тест 2: граф валют — RUB->EUR и EUR->RSD известны, проверяем производные курсы
+      const savedTrades = this.fxTrades;
+      this.fxTrades = [
+        { fromCurrency:'RUB', fromAmount:55000, toCurrency:'EUR', toAmount:500 }, // 1 EUR = 110 RUB
+        { fromCurrency:'EUR', fromAmount:7000, toCurrency:'RSD', toAmount:663000 } // 1 EUR = 94.71... RSD -> тут наоборот, отдали EUR получили RSD
+      ];
+      const rateRubToRsd = this.findFxRate('RUB','RSD');
+      const rateRsdToRub = this.findFxRate('RSD','RUB');
+      const rateEurToRub = this.findFxRate('EUR','RUB');
+      const rateRsdToEur = this.findFxRate('RSD','EUR');
+      const okGraph = rateRubToRsd !== null && rateRsdToRub !== null && rateEurToRub !== null && rateRsdToEur !== null
+        && Math.abs(rateRubToRsd * rateRsdToRub - 1) < 0.0001;
+      console.log(okGraph ? '✅ Тест 2 (граф валют) PASSED' : '❌ Тест 2 FAILED', { rateRubToRsd, rateRsdToRub, rateEurToRub, rateRsdToEur });
+      ok = ok && okGraph;
+      this.fxTrades = savedTrades;
+
+      console.log(ok ? '✅✅ ВСЕ ТЕСТЫ ПРОШЛИ' : '❌ ЕСТЬ ОШИБКИ, см. выше');
       return ok;
     },
     get recurringList(){
@@ -1021,23 +1094,23 @@ document.addEventListener('alpine:init', () => {
 
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <span class="field-label" style="margin-bottom:0">Курсы покупки валюты</span>
-              <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openLotForm()" x-html="icon('plus',16)"></button>
+              <span class="field-label" style="margin-bottom:0">Курсы обмена валют</span>
+              <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openFxForm()" x-html="icon('plus',16)"></button>
             </div>
-            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при покупке валюты, а не на дату каждого расхода.</p>
-            <div class="card stack" style="padding:8px 16px" x-show="currencyLots.length">
-              <template x-for="lot in currencyLots" :key="lot.id">
+            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при обмене валюты, а не на дату каждого расхода. Можно указывать обмены между любыми валютами — например EUR→RSD — приложение само посчитает курс RUB→RSD через цепочку.</p>
+            <div class="card stack" style="padding:8px 16px" x-show="fxTrades.length">
+              <template x-for="t in fxTrades" :key="t.id">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
                   <div>
-                    <div style="font-weight:600;font-size:14px" x-text="lot.amountForeign+' '+lot.currency+' → '+lot.amountBase+' '+lot.baseCurrency"></div>
-                    <div class="exp-meta" x-text="lot.date"></div>
+                    <div style="font-weight:600;font-size:14px" x-text="t.fromAmount+' '+t.fromCurrency+' → '+t.toAmount+' '+t.toCurrency"></div>
+                    <div class="exp-meta" x-text="t.date"></div>
                   </div>
-                  <button class="iconbtn" style="width:28px;height:28px" @click="deleteLot(lot.id)">✕</button>
+                  <button class="iconbtn" style="width:28px;height:28px" @click="deleteFx(t.id)">✕</button>
                 </div>
               </template>
             </div>
-            <div class="card" x-show="!currencyLots.length">
-              <p class="faint">Курсов покупки пока нет. Добавьте, чтобы конвертировать расходы в других валютах.</p>
+            <div class="card" x-show="!fxTrades.length">
+              <p class="faint">Курсов обмена пока нет. Добавьте, чтобы конвертировать расходы в других валютах.</p>
             </div>
           </div>
 
@@ -1052,42 +1125,51 @@ document.addEventListener('alpine:init', () => {
       </div>
     </div>
 
-    <!-- CURRENCY LOT SHEET (Курс покупки валюты) -->
-    <div class="sheet-overlay" x-show="showLotForm" x-cloak x-transition.opacity @click.self="showLotForm=false">
+    <!-- FX TRADE SHEET (Курс обмена валют) -->
+    <div class="sheet-overlay" x-show="showFxForm" x-cloak x-transition.opacity @click.self="showFxForm=false">
       <div class="sheet-full">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <button class="iconbtn" @click="showLotForm=false" x-html="icon('back')"></button>
-          <h2 style="font-size:16px">Курс покупки валюты</h2>
+          <button class="iconbtn" @click="showFxForm=false" x-html="icon('back')"></button>
+          <h2 style="font-size:16px">Курс обмена валют</h2>
           <span style="width:40px"></span>
         </div>
         <div class="stack" style="margin-top:8px">
-          <p class="faint">Например: купили 500 EUR за 55000 RUB 7 августа. Этот курс будет использоваться для всех расходов в EUR, пока не добавите новую покупку.</p>
+          <p class="faint">Например: отдали 663000 RSD, получили 7000 EUR. Можно фиксировать обмен между любыми двумя валютами — приложение само вычислит курсы для остальных пар через цепочку.</p>
 
           <div>
-            <span class="field-label">Валюта, которую купили</span>
+            <span class="field-label">Отдали (валюта продажи)</span>
             <div class="currency-row">
-              <template x-for="c in CURRENCIES.filter(x=>x!=='RUB')">
-                <button class="curbtn" :class="newLot.currency===c&&'active'" @click="newLot.currency=c" x-text="c"></button>
+              <template x-for="c in CURRENCIES">
+                <button class="curbtn" :class="newFx.fromCurrency===c&&'active'" @click="newFx.fromCurrency=c" x-text="c"></button>
               </template>
             </div>
           </div>
-
           <div>
-            <span class="field-label">Сумма в купленной валюте</span>
-            <input class="input" type="number" inputmode="decimal" placeholder="500" x-model="newLot.amountForeign">
+            <span class="field-label">Сумма продажи</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="663000" x-model="newFx.fromAmount">
           </div>
 
           <div>
-            <span class="field-label">Заплачено (в рублях)</span>
-            <input class="input" type="number" inputmode="decimal" placeholder="55000" x-model="newLot.amountBase">
+            <span class="field-label">Получили (валюта покупки)</span>
+            <div class="currency-row">
+              <template x-for="c in CURRENCIES">
+                <button class="curbtn" :class="newFx.toCurrency===c&&'active'" @click="newFx.toCurrency=c" x-text="c"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <span class="field-label">Сумма покупки</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="7000" x-model="newFx.toAmount">
           </div>
 
           <div>
-            <span class="field-label">Дата покупки</span>
-            <input class="input" type="date" x-model="newLot.date">
+            <span class="field-label">Дата обмена</span>
+            <input class="input" type="date" x-model="newFx.date">
           </div>
 
-          <button class="btn-primary" @click="submitLot()" :disabled="!newLot.amountForeign || !newLot.amountBase">Сохранить курс</button>
+          <button class="btn-primary" @click="submitFx()" :disabled="fxSaving || !newFx.fromAmount || !newFx.toAmount || newFx.fromCurrency===newFx.toCurrency">
+            <span x-text="fxSaving ? 'Сохранение…' : 'Сохранить курс'"></span>
+          </button>
         </div>
       </div>
     </div>
