@@ -278,7 +278,6 @@ document.addEventListener('alpine:init', () => {
       window.addEventListener('online', () => this.checkRealConnectivity());
       window.addEventListener('offline', () => {
         this.isOnline = false;
-        if(db && db.disableNetwork) db.disableNetwork().catch(()=>{});
         this.toast('Нет подключения к интернету');
       });
       setTimeout(() => this.startFirebaseFlow(), 0);
@@ -312,7 +311,6 @@ document.addEventListener('alpine:init', () => {
         this.startupStatus = this.isOnline ? 'Firebase недоступен' : 'Оффлайн: показаны локальные данные';
         return;
       }
-      if(!this.isOnline && db && db.disableNetwork) await db.disableNetwork().catch(()=>{});
       this.startupStatus = this.isOnline ? 'Синхронизация…' : 'Оффлайн: показаны локальные данные';
       auth.onAuthStateChanged(async (u) => {
         this.user = u;
@@ -353,7 +351,6 @@ document.addEventListener('alpine:init', () => {
       const wasOnline = this.isOnline;
       if(!navigator.onLine){
         this.isOnline = false;
-        if(db && db.disableNetwork) await db.disableNetwork().catch(()=>{});
         if(wasOnline) this.toast('Нет подключения к интернету');
         return false;
       }
@@ -368,10 +365,6 @@ document.addEventListener('alpine:init', () => {
         online = false;
       }
       this.isOnline = online;
-      if(db){
-        if(this.isOnline && db.enableNetwork) db.enableNetwork().catch(()=>{});
-        if(!this.isOnline && db.disableNetwork) db.disableNetwork().catch(()=>{});
-      }
       if(!wasOnline && this.isOnline){
         this.toast('Соединение восстановлено');
         this.flushPendingQueue();
