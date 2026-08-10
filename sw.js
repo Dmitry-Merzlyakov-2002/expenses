@@ -1,4 +1,4 @@
-const VERSION = 'v9-height-chain-fix';
+const VERSION = 'v10-height-chain-fix';
 const APP_SHELL = `ce-shell-${VERSION}`;
 const STATIC_CACHE = `ce-static-${VERSION}`;
 const RUNTIME_CACHE = `ce-runtime-${VERSION}`;
