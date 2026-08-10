@@ -1,4 +1,4 @@
-const VERSION = 'v11';
+const VERSION = 'v12';
 const APP_SHELL = `ce-shell-${VERSION}`;
 const STATIC_CACHE = `ce-static-${VERSION}`;
 const RUNTIME_CACHE = `ce-runtime-${VERSION}`;
@@ -55,13 +55,30 @@ function emergencyResponse() {
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
-    try {
-      const shell = await caches.open(APP_SHELL);
-      await shell.addAll(SHELL_ASSETS.map(url => new Request(url, { cache: 'reload' })));
-    } catch (e) {
-      // If offline during an SW update check, install may fail — that's fine,
-      // the existing activated worker keeps controlling the page untouched.
-    }
+    const shell = await caches.open(APP_SHELL);
+    // ИСПРАВЛЕНИЕ: раньше использовался shell.addAll(...), который работает
+    // по принципу "всё или ничего" — если хотя бы один файл из списка (например,
+    // отсутствующий шрифт или icon-512.png) отвечает не-200, ВЕСЬ шелл-кэш
+    // не записывался вообще, включая критичные firebase-*.js и alpine.min.js,
+    // а ошибка тихо проглатывалась в catch. Из-за этого установленное на
+    // главный экран приложение могло долго работать на старой/пустой версии
+    // кэша, и это было не видно в логах.
+    // Теперь каждый файл кэшируется независимо через Promise.allSettled —
+    // одна недостающая иконка/шрифт больше не блокирует кэширование остальных
+    // файлов, а результат каждого файла логируется.
+    const results = await Promise.allSettled(
+      SHELL_ASSETS.map(async url => {
+        const res = await fetch(new Request(url, { cache: 'reload' }));
+        if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+        await shell.put(url, res);
+        return url;
+      })
+    );
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.warn('[sw] Не удалось закэшировать при установке:', SHELL_ASSETS[i], r.reason);
+      }
+    });
   })());
   self.skipWaiting();
 });
@@ -146,6 +163,29 @@ self.addEventListener('fetch', event => {
           // fall through to emergency response below
         }
         return emergencyResponse();
+      }
+    })());
+    return;
+  }
+
+  // ВАЖНО: для JS-файлов Firebase/Alpine/Chart используем "network-first,
+  // затем кэш" вместо чистого "cache-first". Раньше устаревший кэш этих
+  // файлов мог годами отдаваться из установленного PWA, даже после того как
+  // на сервере файлы уже исправлены — именно это вызывало "auth is null"
+  // в установленном приложении, пока в браузере всё работало нормально.
+  const isCriticalScript = /\/assets\/vendor\/(firebase-|alpine|chart)/.test(url.pathname);
+  if (isCriticalScript) {
+    event.respondWith((async () => {
+      try {
+        const res = await fetch(req, { cache: 'no-store' });
+        if (res && res.ok) {
+          const cache = await caches.open(STATIC_CACHE);
+          cache.put(req, res.clone()).catch(() => {});
+        }
+        return res;
+      } catch (e) {
+        const cached = await findInAnyCache(req);
+        return cached || Response.error();
       }
     })());
     return;
