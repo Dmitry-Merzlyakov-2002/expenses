@@ -199,36 +199,52 @@ function hasFirebaseSdk(){
 function hasValidFirebaseConfig(){
   return firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY' && firebaseConfig.projectId && firebaseConfig.projectId !== 'YOUR_PROJECT';
 }
+// ЗАМЕНИТЬ существующую функцию ensureFirebase() на эту версию.
+// Разница: вместо однократной попытки, которая может наткнуться на то, что
+// firebase-auth-compat.js или firebase-firestore-compat.js ещё не успели
+// выполниться (defer-скрипты могут доисполняться чуть позже setTimeout(...,0)
+// из-за сети/Service Worker), теперь функция ждёт (с повторными попытками
+// до ~4 секунд), пока ВСЕ нужные методы реально появятся как функции.
 async function ensureFirebase(){
   if(firebaseReady) return true;
-  if(!hasFirebaseSdk() || !hasValidFirebaseConfig()) return false;
-  try{
-    if(!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
-    auth = window.firebase.auth();
-    db = window.firebase.firestore();
-    // ИСПРАВЛЕНИЕ "INTERNAL ASSERTION FAILED: Unexpected state":
-    // старый enablePersistence({synchronizeTabs:true}) конфликтует с обрывами
-    // WebChannel-стрима (нестабильная сеть, debug по Wi-Fi, DPI) — именно это
-    // вызывает внутренний краш SDK во время записи. Настраиваем офлайн-кэш и
-    // сетевой транспорт через db.settings() ДО первого использования db —
-    // это единственный современный способ и одновременно устраняет
-    // deprecation-warning про enableMultiTabIndexedDbPersistence.
-    db.settings({
-      cache: {
-        kind: 'persistent',
-        tabManager: { kind: 'multiple' }
-      },
-      experimentalAutoDetectLongPolling: true,
-      merge: true
-    });
-    firebaseReady = true;
-    return true;
-  }catch(e){
-    console.warn('Firebase bootstrap failed', e);
-    return false;
-  }
-}
 
+  const maxAttempts = 40;      // 40 * 100ms = до 4 секунд ожидания
+  const delayMs = 100;
+
+  for(let attempt = 0; attempt < maxAttempts; attempt++){
+    const sdkOk =
+      typeof window.firebase !== 'undefined' &&
+      typeof window.firebase.initializeApp === 'function' &&
+      typeof window.firebase.auth === 'function' &&
+      typeof window.firebase.firestore === 'function';
+
+    if(sdkOk && hasValidFirebaseConfig()){
+      try{
+        if(!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
+        auth = window.firebase.auth();
+        db = window.firebase.firestore();
+        db.settings({
+          cache: {
+            kind: 'persistent',
+            tabManager: { kind: 'multiple' }
+          },
+          experimentalAutoDetectLongPolling: true,
+          merge: true
+        });
+        firebaseReady = true;
+        return true;
+      }catch(e){
+        console.warn('Firebase bootstrap failed on attempt', attempt, e);
+        // не выходим — вдруг это была временная нестыковка, пробуем ещё раз
+      }
+    }
+
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+
+  console.error('Firebase SDK не инициализировался за отведённое время (все скрипты так и не стали функциями)');
+  return false;
+}
 document.addEventListener('alpine:init', () => {
   Alpine.data('appData', () => ({
     theme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark':'light',
