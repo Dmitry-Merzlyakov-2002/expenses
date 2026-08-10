@@ -1,4 +1,4 @@
-const VERSION = 'v13';
+const VERSION = 'v14';
 const APP_SHELL = `ce-shell-${VERSION}`;
 const STATIC_CACHE = `ce-static-${VERSION}`;
 const RUNTIME_CACHE = `ce-runtime-${VERSION}`;
