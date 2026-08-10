@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Расходы на переезд</title>
+<meta name="theme-color" content="#01696f">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./assets/icon-192.png">
+<link href="./assets/vendor/fonts.css" rel="stylesheet">
+<script defer src="./assets/vendor/chart.umd.min.js"></script>
+<script defer src="./assets/vendor/alpine.min.js"></script>
+<script defer src="./assets/vendor/firebase-app-compat.js"></script>
+<script defer src="./assets/vendor/firebase-auth-compat.js"></script>
+<script defer src="./assets/vendor/firebase-firestore-compat.js"></script>
+<style>
+/* Art direction: Family relocation budget tracker → calm, trustworthy, fast-input utility
+   Palette: warm neutral surfaces + single teal accent (Nexus) — teal signals "money under control" without alarm
+   Typography: Satoshi (display/headings) + Work Sans (body/UI) — clean geometric pairing, legible at small UI sizes
+   Density: dense/functional — this is a daily-use utility, not editorial */
+:root, [data-theme="light"]{
+  --color-bg:#f7f6f2;--color-surface:#f9f8f5;--color-surface-2:#fbfbf9;--color-surface-offset:#f3f0ec;
+  --color-surface-offset-2:#edeae5;--color-surface-dynamic:#e6e4df;--color-divider:#dcd9d5;--color-border:#d4d1ca;
+  --color-text:#28251d;--color-text-muted:#6b6a65;--color-text-faint:#a5a49e;--color-text-inverse:#f9f8f4;
+  --color-primary:#01696f;--color-primary-hover:#0c4e54;--color-primary-active:#0f3638;--color-primary-highlight:#cedcd8;
+  --color-warning:#964219;--color-error:#a12c7b;--color-success:#437a22;--color-blue:#006494;--color-purple:#7a39bb;
+  --color-orange:#da7101;--color-gold:#d19900;
+  --radius-sm:.375rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;
+  --shadow-sm:0 1px 2px oklch(0.2 0.01 80/.06);--shadow-md:0 4px 12px oklch(0.2 0.01 80/.08);--shadow-lg:0 12px 32px oklch(0.2 0.01 80/.14);
+  --font-display:'Satoshi','Work Sans',sans-serif;--font-body:'Work Sans','Satoshi',sans-serif;
+}
+[data-theme="dark"]{
+  --color-bg:#171614;--color-surface:#1c1b19;--color-surface-2:#201f1d;--color-surface-offset:#1d1c1a;
+  --color-surface-offset-2:#22211f;--color-surface-dynamic:#2d2c2a;--color-divider:#262523;--color-border:#393836;
+  --color-text:#cdccca;--color-text-muted:#9a998f;--color-text-faint:#6b6a65;--color-text-inverse:#2b2a28;
+  --color-primary:#4f98a3;--color-primary-hover:#227f8b;--color-primary-active:#1a626b;--color-primary-highlight:#313b3b;
+  --color-warning:#bb653b;--color-error:#d163a7;--color-success:#6daa45;--color-blue:#5591c7;--color-purple:#a86fdf;
+  --color-orange:#fdab43;--color-gold:#e8af34;
+  --shadow-sm:0 1px 2px oklch(0 0 0/.3);--shadow-md:0 4px 12px oklch(0 0 0/.4);--shadow-lg:0 12px 32px oklch(0 0 0/.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+html{overscroll-behavior-y:none;height:100%}
+body{min-height:100dvh;font-family:var(--font-body);font-size:16px;color:var(--color-text);background:var(--color-bg);line-height:1.5;overscroll-behavior-y:none;overscroll-behavior-x:none;touch-action:pan-x pan-y;position:relative}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+h1,h2,h3{font-family:var(--font-display);line-height:1.15}
+:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px;border-radius:var(--radius-sm)}
+.app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;background:var(--color-bg);position:relative;overscroll-behavior-y:contain}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));background:color-mix(in oklab, var(--color-bg) 88%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--color-divider)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
+.iconbtn{width:40px;height:40px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:var(--color-text-muted);transition:background .15s}
+.iconbtn:active{background:var(--color-surface-offset)}
+main{flex:1;padding:12px 16px 100px;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+.tabbar{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:0 auto;display:flex;background:var(--color-surface);border-top:1px solid var(--color-divider);padding-bottom:env(safe-area-inset-bottom);z-index:30}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 8px;color:var(--color-text-faint);font-size:12px;font-weight:500}
+.tab.active{color:var(--color-primary)}
+.tab svg{width:22px;height:22px}
+.card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow-sm)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.big-total{font-family:var(--font-display);font-weight:900;font-size:clamp(2rem,8vw,2.75rem);letter-spacing:-.02em}
+.muted{color:var(--color-text-muted)}
+.faint{color:var(--color-text-faint);font-size:13px}
+.fab{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));right:50%;transform:translateX(240px);width:60px;height:60px;border-radius:var(--radius-full);background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);z-index:25;transition:transform .15s}
+.fab:active{transform:translateX(240px) scale(.92)}
+@media (max-width:560px){.fab{right:24px;transform:none}.fab:active{transform:scale(.92)}}
+.fab svg{width:28px;height:28px}
+.sheet-overlay{position:fixed;inset:0;background:oklch(0.15 0 0/.5);z-index:40;display:flex;align-items:flex-end}
+.sheet{background:var(--color-bg);width:100%;max-height:94dvh;border-radius:20px 20px 0 0;overflow-y:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+.sheet-full{background:var(--color-bg);position:fixed;inset:0;z-index:40;overflow-y:auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+.sheet-handle{width:36px;height:4px;border-radius:var(--radius-full);background:var(--color-divider);margin:0 auto 12px}
+.amount-input{font-family:var(--font-display);font-weight:800;font-size:clamp(2.5rem,14vw,3.5rem);text-align:center;width:100%;background:transparent;border:none;color:var(--color-text)}
+.currency-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.curbtn{padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--color-border);font-weight:600;font-size:14px;color:var(--color-text-muted);transition:all .15s}
+.curbtn.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cat-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border-radius:var(--radius-lg);border:1.5px solid var(--color-border);background:var(--color-surface);min-height:80px;justify-content:center;transition:all .15s}
+.cat-tile.active{border-color:var(--color-primary);background:var(--color-primary-highlight)}
+.cat-tile svg{width:24px;height:24px;color:var(--color-text-muted)}
+.cat-tile.active svg{color:var(--color-primary)}
+.cat-tile span{font-size:12px;font-weight:500;text-align:center;line-height:1.2}
+.field-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--color-text-faint);margin-bottom:6px;display:block}
+.input,.select,textarea{width:100%;padding:12px 14px;border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);font-size:16px}
+.toggle-row{display:flex;gap:8px}
+.toggle-opt{flex:1;text-align:center;padding:10px;border-radius:var(--radius-md);border:1px solid var(--color-border);font-weight:600;font-size:14px;color:var(--color-text-muted)}
+.toggle-opt.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
+.btn-primary{width:100%;padding:16px;border-radius:var(--radius-lg);background:var(--color-primary);color:#fff;font-weight:700;font-size:16px;box-shadow:var(--shadow-md);transition:transform .1s}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.4}
+.btn-ghost{width:100%;padding:14px;border-radius:var(--radius-lg);color:var(--color-text-muted);font-weight:600;font-size:14px}
+.expense-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--color-divider)}
+.expense-row:last-child{border-bottom:none}
+.exp-icon{width:42px;height:42px;border-radius:var(--radius-md);background:var(--color-surface-offset);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-primary)}
+.exp-icon svg{width:20px;height:20px}
+.exp-info{flex:1;min-width:0}
+.exp-cat{font-weight:600;font-size:14px}
+.exp-meta{font-size:12px;color:var(--color-text-faint)}
+.exp-amt{text-align:right;font-weight:700;font-size:15px;white-space:nowrap}
+.exp-amt small{display:block;font-weight:500;font-size:12px;color:var(--color-text-faint)}
+.chip{display:inline-flex;align-items:center;padding:5px 12px;border-radius:var(--radius-full);border:1px solid var(--color-border);font-size:13px;font-weight:500;color:var(--color-text-muted)}
+.chip.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
+.filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.filter-row::-webkit-scrollbar{display:none}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:14px}
+.kpi .v{font-family:var(--font-display);font-weight:800;font-size:22px}
+.section-title{font-weight:700;font-size:15px;margin-bottom:2px}
+.login-screen{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;gap:20px}
+.google-btn{display:flex;align-items:center;gap:10px;padding:14px 24px;border-radius:var(--radius-lg);background:var(--color-surface);border:1px solid var(--color-border);font-weight:600;box-shadow:var(--shadow-sm)}
+.google-btn:active{transform:scale(.98)}
+.skel{background:linear-gradient(90deg,var(--color-surface-offset) 25%,var(--color-surface-dynamic) 50%,var(--color-surface-offset) 75%);background-size:200% 100%;animation:shimmer 1.5s ease-in-out infinite;border-radius:var(--radius-sm)}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.toast{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--color-text);color:var(--color-text-inverse);padding:10px 20px;border-radius:var(--radius-full);font-size:14px;font-weight:500;z-index:60;box-shadow:var(--shadow-lg)}
+.net-indicator{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:var(--radius-full);transition:all .25s}
+.net-indicator.online{color:var(--color-success);background:color-mix(in oklch, var(--color-success) 12%, transparent)}
+.net-indicator.offline{color:var(--color-warning);background:color-mix(in oklch, var(--color-warning) 14%, transparent)}
+.net-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.net-indicator.offline .net-dot{animation:netpulse 1.4s ease-in-out infinite}
+.spin-icon svg{animation:spin-rotate .8s linear infinite}
+@keyframes spin-rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes netpulse{0%,100%{opacity:1}50%{opacity:.35}}
+[x-cloak]{display:none!important}
+::selection{background:oklch(from var(--color-primary) l c h/.25)}
+input[type=date]{color-scheme:light dark}
+</style>
+</head>
+<body>
+
+<script>
+/* ===== Firebase config — replace with your project's config before deploying ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBvPEkGZW5Ivfi5zZCxmh0laeYLVRhcGAY",
+  authDomain: "expense-7f67f.firebaseapp.com",
+  projectId: "expense-7f67f",
+  storageBucket: "expense-7f67f.firebasestorage.app",
+  messagingSenderId: "877432029282",
+  appId: "1:877432029282:web:9d9758ba756f72c884113b"
+};
+let auth = null;
+let db = null;
+let persistenceReady = Promise.resolve();
+let firebaseReady = false;
+
+const LS_KEYS = { queue: 'ce_pending_queue_v1', lastCat: 'ce_last_catid_v1', expensesCache: 'ce_expenses_cache_v1', workspaceCache: 'ce_workspace_cache_v1' };
+function lsGet(key, fallback){
+  try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch(e){ return fallback; }
+}
+function lsSet(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }
+  catch(e){ console.warn('localStorage write failed', e); }
+}
+function lsRemove(key){
+  try{ localStorage.removeItem(key); }catch(e){}
+}
+
+const CURRENCIES = ["RUB","RSD","GEL","USD","EUR"];
+const CUR_SYMBOL = {RUB:"₽",RSD:"дин",GEL:"₾",USD:"$",EUR:"€"};
+const DEFAULT_CATEGORIES = [
+  {id:"visas", name:"Документы и визы", icon:"doc"},
+  {id:"transport_intl", name:"Билеты и транспорт", icon:"plane"},
+  {id:"housing", name:"Съём жилья", icon:"home"},
+  {id:"food", name:"Еда и продукты", icon:"cart"},
+  {id:"furniture", name:"Мебель и техника", icon:"sofa"},
+  {id:"connectivity", name:"Связь и интернет", icon:"wifi"},
+  {id:"medical", name:"Медицина и страховка", icon:"heart"},
+  {id:"local_transport", name:"Транспорт (местный)", icon:"car"},
+  {id:"other", name:"Прочее", icon:"dots"}
+];
+const ICONS = {
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  plane:'<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.3.5-.1 1.1.4 1.4L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.8 5.3c.3.5.9.7 1.4.4l.5-.3c.4-.2.6-.6.5-1.1z"/>',
+  home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  cart:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
+  sofa:'<path d="M3 9v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9"/><path d="M5 21v-2M19 21v-2M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2M5 12H3v4h2M19 12h2v4h-2"/>',
+  wifi:'<path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="1"/>',
+  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>',
+  car:'<path d="M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13"/><path d="M3 13h18v5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="16.5" r="1.5"/><circle cx="16.5" cy="16.5" r="1.5"/>',
+  dots:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+  sun:'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  feed:'<path d="M4 6h16M4 12h16M4 18h7"/>',
+  stats:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/>',
+  repeat:'<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  card:'<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
+  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
+  refresh:'<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>'
+};
+function icon(name,size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS.dots}</svg>`;}
+
+function hasFirebaseSdk(){
+  return typeof window.firebase !== 'undefined' && typeof window.firebase.initializeApp === 'function';
+}
+function hasValidFirebaseConfig(){
+  return firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY' && firebaseConfig.projectId && firebaseConfig.projectId !== 'YOUR_PROJECT';
+}
+async function ensureFirebase(){
+  if(firebaseReady) return true;
+  if(!hasFirebaseSdk() || !hasValidFirebaseConfig()) return false;
+  try{
+    if(!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
+    auth = window.firebase.auth();
+    db = window.firebase.firestore();
+    // ИСПРАВЛЕНИЕ "INTERNAL ASSERTION FAILED: Unexpected state":
+    // старый enablePersistence({synchronizeTabs:true}) конфликтует с обрывами
+    // WebChannel-стрима (нестабильная сеть, debug по Wi-Fi, DPI) — именно это
+    // вызывает внутренний краш SDK во время записи. Настраиваем офлайн-кэш и
+    // сетевой транспорт через db.settings() ДО первого использования db —
+    // это единственный современный способ и одновременно устраняет
+    // deprecation-warning про enableMultiTabIndexedDbPersistence.
+    db.settings({
+      cache: {
+        kind: 'persistent',
+        tabManager: { kind: 'multiple' }
+      },
+      experimentalAutoDetectLongPolling: true,
+      merge: true
+    });
+    firebaseReady = true;
+    return true;
+  }catch(e){
+    console.warn('Firebase bootstrap failed', e);
+    return false;
+  }
+}
+
+document.addEventListener('alpine:init', () => {
+  Alpine.data('appData', () => ({
+    theme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark':'light',
+    isOnline: navigator.onLine,
+    pendingQueue: [],
+    _pingTimer: null,
+    user: null,
+    loading: true,
+    booting: true,
+    firebaseEnabled: false,
+    startupStatus: 'Запуск оффлайн-оболочки…',
+    workspaceId: null,
+    workspaceLoading: false,
+    joinCode: '',
+    baseCurrency: 'EUR',
+    categories: DEFAULT_CATEGORIES,
+    expenses: [],
+    tab: 'feed',
+    showAdd: false,
+    showSettings: false,
+    toastMsg: '',
+    filterCat: 'all',
+    filterType: 'all',
+    filterPeriod: 'month',
+    customStartDate: '',
+    customEndDate: '',
+    form: { amount:'', currency:'EUR', catId:'housing', type:'one', date:'', comment:'', method:'card' },
+    _restoringPendingQueue: false,
+    newCatName: '',
+    showNewCat: false,
+    chart: null,
+    refreshing: false,
+    fxTrades: [],
+    showFxForm: false,
+    fxSaving: false,
+    newFx: { fromCurrency:'RUB', fromAmount:'', toCurrency:'EUR', toAmount:'', date:'' },
+
+    init(){
+      document.documentElement.setAttribute('data-theme', this.theme);
+      this.form.date = this.today();
+      this.restoreLocalState();
+      this.loading = false;
+      this.booting = false;
+      this.startupStatus = '';
+      this.isOnline = false;
+      this.$nextTick(() => this.renderChart());
+      setTimeout(() => this.checkRealConnectivity(), 0);
+      this._pingTimer = setInterval(() => this.checkRealConnectivity(), 15000);
+      window.addEventListener('online', () => this.checkRealConnectivity());
+      window.addEventListener('offline', () => {
+        this.isOnline = false;
+        if(db && db.disableNetwork) db.disableNetwork().catch(()=>{});
+        this.toast('Нет подключения к интернету');
+      });
+      setTimeout(() => this.startFirebaseFlow(), 0);
+    },
+    restoreLocalState(){
+      this._restoringPendingQueue = true;
+      const savedQueue = lsGet(LS_KEYS.queue, []);
+      const savedCatId = lsGet(LS_KEYS.lastCat, null);
+      const cachedExpenses = lsGet(LS_KEYS.expensesCache, []);
+      const cachedWorkspace = lsGet(LS_KEYS.workspaceCache, null);
+      if(savedCatId) this.form.catId = savedCatId;
+      if(cachedWorkspace){
+        this.workspaceId = cachedWorkspace.workspaceId || this.workspaceId;
+        this.baseCurrency = cachedWorkspace.baseCurrency || this.baseCurrency;
+        if(Array.isArray(cachedWorkspace.categories) && cachedWorkspace.categories.length) this.categories = cachedWorkspace.categories;
+      }
+      this.expenses = Array.isArray(cachedExpenses) ? cachedExpenses : [];
+      if(savedQueue.length){
+        this.pendingQueue = savedQueue;
+        const pendingRows = savedQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
+        const existingIds = new Set(this.expenses.map(e => e.id));
+        pendingRows.forEach(row => { if(!existingIds.has(row.id)) this.expenses.unshift(row); });
+      }
+      this._restoringPendingQueue = false;
+    },
+    async startFirebaseFlow(){
+      this.startupStatus = 'Подключаем локальную базу…';
+      const ready = await ensureFirebase();
+      this.firebaseEnabled = ready;
+      if(!ready){
+        this.startupStatus = this.isOnline ? 'Firebase недоступен' : 'Оффлайн: показаны локальные данные';
+        return;
+      }
+      if(!this.isOnline && db && db.disableNetwork) await db.disableNetwork().catch(()=>{});
+      this.startupStatus = this.isOnline ? 'Синхронизация…' : 'Оффлайн: показаны локальные данные';
+      auth.onAuthStateChanged(async (u) => {
+        this.user = u;
+        this.loading = false;
+        if(u){ await this.loadWorkspace(); }
+      });
+    },
+    today(){ return new Date().toISOString().slice(0,10); },
+    toast(msg){ this.toastMsg = msg; setTimeout(()=>this.toastMsg='', 2200); },
+    async manualRefresh(){
+      if(this.refreshing) return;
+      this.refreshing = true;
+      const withTimeout = (promise, ms) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+      ]);
+      try{
+        const online = await withTimeout(this.checkRealConnectivity(), 3000);
+        if(online){
+          await withTimeout(this.flushPendingQueue(), 5000).catch(()=>{});
+          if(this.workspaceId) await withTimeout(this.loadWorkspace(), 5000).catch(()=>{});
+          if(navigator.serviceWorker && navigator.serviceWorker.controller){
+            navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
+          }
+          this.toast('Обновлено');
+        }else{
+          this.toast('Нет подключения — показаны локальные данные');
+        }
+      }catch(e){
+        this.toast('Не удалось обновить');
+      }finally{
+        this.refreshing = false;
+      }
+    },
+    toggleTheme(){ this.theme = this.theme==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme', this.theme); },
+
+    async checkRealConnectivity(){
+      const wasOnline = this.isOnline;
+      if(!navigator.onLine){
+        this.isOnline = false;
+        if(db && db.disableNetwork) await db.disableNetwork().catch(()=>{});
+        if(wasOnline) this.toast('Нет подключения к интернету');
+        return false;
+      }
+      let online = false;
+      try{
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1800);
+        const res = await fetch(`./manifest.json?_=${Date.now()}`, { cache:'reload', signal: controller.signal });
+        clearTimeout(timeoutId);
+        online = !!res;
+      }catch(e){
+        online = false;
+      }
+      this.isOnline = online;
+      if(db){
+        if(this.isOnline && db.enableNetwork) db.enableNetwork().catch(()=>{});
+        if(!this.isOnline && db.disableNetwork) db.disableNetwork().catch(()=>{});
+      }
+      if(!wasOnline && this.isOnline){
+        this.toast('Соединение восстановлено');
+        this.flushPendingQueue();
+      }else if(wasOnline && !this.isOnline){
+        this.toast('Нет подключения к интернету');
+      }
+      return this.isOnline;
+    },
+    async flushPendingQueue(){
+      if(!this.pendingQueue.length || !this.workspaceId) return;
+      const toSync = [...this.pendingQueue];
+      this.pendingQueue = [];
+      for(const payload of toSync){
+        const { _localId, createdAtLocal, ...cleanPayload } = payload;
+        try{
+          await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
+            ...cleanPayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }catch(e){
+          this.pendingQueue.push(payload);
+        }
+      }
+      this.expenses = this.expenses.filter(e => !e._pending);
+      if(this.pendingQueue.length){
+        lsSet(LS_KEYS.queue, this.pendingQueue);
+      }else{
+        lsRemove(LS_KEYS.queue);
+      }
+      if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
+    },
+
+    async signIn(){
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try{ await auth.signInWithPopup(provider); }
+      catch(e){ this.toast('Ошибка входа: '+e.message); }
+    },
+    async signOut(){ await auth.signOut(); this.workspaceId=null; this.expenses=[]; },
+
+    async loadWorkspace(){
+      this.workspaceLoading = true;
+      const userDoc = await db.collection('users').doc(this.user.uid).get();
+      if(userDoc.exists && userDoc.data().workspaceId){
+        this.workspaceId = userDoc.data().workspaceId;
+        this.attachListeners();
+      }
+      this.workspaceLoading = false;
+    },
+    async createWorkspace(){
+      const wsRef = db.collection('workspaces').doc();
+      await wsRef.set({ createdBy: this.user.uid, baseCurrency: 'EUR', categories: DEFAULT_CATEGORIES, members:[this.user.uid], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection('users').doc(this.user.uid).set({ workspaceId: wsRef.id, email:this.user.email }, {merge:true});
+      this.workspaceId = wsRef.id;
+      this.attachListeners();
+      this.toast('Рабочее пространство создано. Код: '+wsRef.id);
+    },
+    async joinWorkspace(){
+      if(!this.joinCode.trim()) return;
+      const wsRef = db.collection('workspaces').doc(this.joinCode.trim());
+      const snap = await wsRef.get();
+      if(!snap.exists){ this.toast('Пространство не найдено'); return; }
+      await wsRef.set({ members: firebase.firestore.FieldValue.arrayUnion(this.user.uid) }, {merge:true});
+      await db.collection('users').doc(this.user.uid).set({ workspaceId: wsRef.id, email:this.user.email }, {merge:true});
+      this.workspaceId = wsRef.id;
+      this.attachListeners();
+      this.toast('Подключено к пространству');
+    },
+    attachListeners(){
+      this.loadFxTrades();
+      db.collection('workspaces').doc(this.workspaceId).onSnapshot(doc=>{
+        if(!doc.exists) return;
+        const d = doc.data();
+        this.baseCurrency = d.baseCurrency || 'EUR';
+        if(d.categories && d.categories.length) this.categories = d.categories;
+        lsSet(LS_KEYS.workspaceCache, { workspaceId:this.workspaceId, baseCurrency:this.baseCurrency, categories:this.categories });
+        this.recalcAll();
+      });
+      db.collection('workspaces').doc(this.workspaceId).collection('expenses').orderBy('date','desc').onSnapshot(snap=>{
+        const remoteExpenses = snap.docs.map(d=>({id:d.id, ...d.data()}));
+        const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
+        this.expenses = [...pendingRows, ...remoteExpenses];
+        lsSet(LS_KEYS.expensesCache, this.expenses.filter(e => !e._pending));
+        this.$nextTick(()=>this.renderChart());
+      });
+    },
+
+    toCents(amount){ return Math.round(Number(amount) * 100); },
+    fromCents(cents){ return cents / 100; },
+    buildFxGraph(){
+      const graph = {};
+      const pairTotals = {};
+      this.fxTrades.forEach(t=>{
+        const from = (t.fromCurrency||'').toUpperCase();
+        const to = (t.toCurrency||'').toUpperCase();
+        const fromAmount = Number(t.fromAmount);
+        const toAmount = Number(t.toAmount);
+        if(!from || !to || !fromAmount || !toAmount || from===to) return;
+        const key = from+'|'+to;
+        if(!pairTotals[key]) pairTotals[key] = { totalFrom:0, totalTo:0 };
+        pairTotals[key].totalFrom += fromAmount;
+        pairTotals[key].totalTo += toAmount;
+      });
+      Object.entries(pairTotals).forEach(([key, {totalFrom, totalTo}])=>{
+        const [from, to] = key.split('|');
+        if(!graph[from]) graph[from] = {};
+        if(!graph[to]) graph[to] = {};
+        if(totalFrom > 0) graph[from][to] = totalTo/totalFrom;
+        if(totalTo > 0) graph[to][from] = totalFrom/totalTo;
+      });
+      return graph;
+    },
+    findFxRate(fromCurrency, toCurrency){
+      const from = (fromCurrency||'').toUpperCase();
+      const to = (toCurrency||'').toUpperCase();
+      if(!from || !to) return null;
+      if(from === to) return 1;
+      const graph = this.buildFxGraph();
+      if(!graph[from]) return null;
+      const visited = new Set([from]);
+      const queue = [{ cur: from, rate: 1 }];
+      while(queue.length){
+        const { cur, rate } = queue.shift();
+        const neighbors = graph[cur] || {};
+        for(const [next, edgeRate] of Object.entries(neighbors)){
+          if(visited.has(next)) continue;
+          const newRate = rate * edgeRate;
+          if(next === to) return newRate;
+          visited.add(next);
+          queue.push({ cur: next, rate: newRate });
+        }
+      }
+      return null;
+    },
+    convertToBase(amount, fromCurrency){
+      const from = (fromCurrency||'').toUpperCase();
+      const to = (this.baseCurrency||'').toUpperCase();
+      if(from === to) return Number(amount);
+      const rate = this.findFxRate(from, to);
+      if(rate === null) return null;
+      return Number(amount) * rate;
+    },
+    async loadFxTrades(){
+      if(!db || !this.workspaceId){ console.error('[loadFxTrades] db или workspaceId не готовы', {db:!!db, workspaceId:this.workspaceId}); return; }
+      db.collection('workspaces').doc(this.workspaceId).collection('fxTrades')
+        .onSnapshot(snap=>{
+          this.fxTrades = snap.docs.map(d=>({id:d.id, ...d.data()}))
+            .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+          console.log('[loadFxTrades] загружено записей:', this.fxTrades.length);
+          this.recalcAll();
+        }, err => {
+          console.error('[loadFxTrades] ошибка snapshot:', err);
+          this.toast('Не удалось загрузить курсы обмена: '+err.message);
+        });
+    },
+    openFxForm(){
+      this.newFx = {
+        fromCurrency:'RUB', fromAmount:'',
+        toCurrency: this.baseCurrency==='RUB' ? 'EUR' : 'RUB',
+        toAmount:'', date:this.today()
+      };
+      this.showFxForm = true;
+    },
+    async submitFx(){
+      if(this.fxSaving) return;
+      const fromAmount = parseFloat(this.newFx.fromAmount);
+      const toAmount = parseFloat(this.newFx.toAmount);
+      if(!this.newFx.fromCurrency || !this.newFx.toCurrency){ this.toast('Выберите обе валюты'); return; }
+      if(this.newFx.fromCurrency === this.newFx.toCurrency){ this.toast('Валюты должны отличаться'); return; }
+      if(!fromAmount || isNaN(fromAmount) || fromAmount <= 0){ this.toast('Введите сумму продажи'); return; }
+      if(!toAmount || isNaN(toAmount) || toAmount <= 0){ this.toast('Введите сумму покупки'); return; }
+      if(!this.newFx.date || !/^\d{4}-\d{2}-\d{2}$/.test(this.newFx.date)){ this.toast('Укажите дату в формате ГГГГ-ММ-ДД'); return; }
+      if(!this.user || !this.user.uid){ this.toast('Профиль пользователя ещё не готов, попробуйте через секунду'); console.error('[submitFx] user не готов', this.user); return; }
+      if(!db){ this.toast('Нет подключения к базе данных'); console.error('[submitFx] db is null'); return; }
+      if(!this.workspaceId){ this.toast('Рабочее пространство не готово'); console.error('[submitFx] workspaceId is null'); return; }
+      this.fxSaving = true;
+      try{
+        if(auth && auth.currentUser) await auth.currentUser.getIdToken(true);
+      }catch(e){
+        console.warn('Не удалось обновить токен', e);
+      }
+      const payload = {
+        fromCurrency: this.newFx.fromCurrency,
+        fromAmountCents: this.toCents(fromAmount),
+        fromAmount,
+        toCurrency: this.newFx.toCurrency,
+        toAmountCents: this.toCents(toAmount),
+        toAmount,
+        date: this.newFx.date,
+        createdBy: this.user.uid
+      };
+      console.log('[submitFx] сохраняем', payload);
+      const timeoutMs = 10000;
+      let timedOut = false;
+      const timeoutId = setTimeout(()=>{
+        timedOut = true;
+        this.fxSaving = false;
+        this.toast('Превышено время ожидания сервера. Проверьте сеть и попробуйте снова.');
+        console.error('[submitFx] таймаут ожидания ответа Firestore (>'+timeoutMs+'мс)');
+      }, timeoutMs);
+      try{
+        await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').add({
+          ...payload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        clearTimeout(timeoutId);
+        if(timedOut) return;
+        this.showFxForm = false;
+        this.toast('Курс обмена сохранён');
+      }catch(e){
+        clearTimeout(timeoutId);
+        console.error('[submitFx] Firestore add() упал:', e);
+        this.toast('Ошибка сохранения: '+(e && e.message ? e.message : 'неизвестная ошибка'));
+      }finally{
+        clearTimeout(timeoutId);
+        if(!timedOut) this.fxSaving = false;
+      }
+    },
+    async deleteFx(id){
+      if(!db || !this.workspaceId){ this.toast('Удаление недоступно офлайн'); return; }
+      try{
+        await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').doc(id).delete();
+        this.toast('Запись удалена');
+      }catch(e){
+        console.error('[deleteFx] ошибка удаления', e);
+        this.toast('Не удалось удалить запись');
+      }
+    },
+    debugFx(){
+      const graph = this.buildFxGraph();
+      console.log('===== FX DEBUG =====');
+      console.log('workspaceId:', this.workspaceId);
+      console.log('user.uid:', this.user ? this.user.uid : null);
+      console.log('db готов:', !!db);
+      console.log('fxTrades count:', this.fxTrades.length);
+      console.log('fxTrades:', this.fxTrades);
+      console.log('граф курсов:', graph);
+      console.log('baseCurrency:', this.baseCurrency);
+      CURRENCIES.forEach(c=>{
+        if(c === this.baseCurrency) return;
+        const rate = this.findFxRate(c, this.baseCurrency);
+        console.log(`${c} -> ${this.baseCurrency}:`, rate === null ? 'НЕТ КУРСА' : rate);
+      });
+      console.log('=====================');
+      return { workspaceId:this.workspaceId, userUid: this.user?this.user.uid:null, fxTradesCount:this.fxTrades.length, graph };
+    },
+    setPeriod(mode){
+      this.filterPeriod = mode;
+      if(mode==='range' && (!this.customStartDate || !this.customEndDate)){
+        const todayStr = this.today();
+        const today = new Date(todayStr);
+        const start = new Date(today);
+        start.setDate(start.getDate()-30);
+        const pad = n=> String(n).padStart(2,'0');
+        this.customEndDate = todayStr;
+        this.customStartDate = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+      }
+      this.recalcAll();
+    },
+    recalcAll(){ this.$nextTick(()=>this.renderChart()); },
+    liveBaseAmount(exp){
+      return this.convertToBase(exp.amount, exp.currency);
+    },
+    catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
+
+    openAdd(prefill){
+      this.form = prefill ? {...prefill, date:this.today()} : { amount:'', currency:this.baseCurrency, catId: this.categories[0]?.id||'other', type:'one', date:this.today(), comment:'', method:'card' };
+      this.showAdd = true;
+    },
+    async submitExpense(){
+      if(!this.form.amount || isNaN(parseFloat(this.form.amount))) { this.toast('Введите сумму'); return; }
+      const amount = parseFloat(this.form.amount);
+      const basePayload = {
+        amount, amountCents: this.toCents(amount), currency:this.form.currency,
+        catId:this.form.catId, type:this.form.type, date:this.form.date,
+        comment:this.form.comment||'', method:this.form.method, createdBy:this.user.uid
+      };
+      lsSet(LS_KEYS.lastCat, this.form.catId);
+
+      if(!this.isOnline){
+        const pendingId = 'pending_'+Date.now();
+        const payload = { ...basePayload, createdAtLocal: Date.now(), _localId: pendingId };
+        this.pendingQueue.push(payload);
+        lsSet(LS_KEYS.queue, this.pendingQueue);
+        this.expenses = [{ id: pendingId, ...payload, _pending: true }, ...this.expenses];
+        this.showAdd = false;
+        this.toast('Сохранено локально, ждёт синхронизации');
+        return;
+      }
+      try{
+        await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
+          ...basePayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        this.showAdd = false;
+        this.toast('Расход добавлен');
+      }catch(e){
+        const pendingId = 'pending_'+Date.now();
+        const payload = { ...basePayload, createdAtLocal: Date.now(), _localId: pendingId };
+        this.pendingQueue.push(payload);
+        lsSet(LS_KEYS.queue, this.pendingQueue);
+        this.expenses = [{ id: pendingId, ...payload, _pending: true }, ...this.expenses];
+        this.showAdd = false;
+        this.toast('Нет связи с сервером, сохранено локально');
+      }
+    },
+    async deleteExpense(id){
+      if(String(id).startsWith('pending_')){
+        this.expenses = this.expenses.filter(e => e.id !== id);
+        this.pendingQueue = this.pendingQueue.filter(p => p._localId !== id);
+        if(this.pendingQueue.length) lsSet(LS_KEYS.queue, this.pendingQueue); else lsRemove(LS_KEYS.queue);
+        this.toast('Отложенная запись удалена');
+        return;
+      }
+      if(!db){ this.toast('Удаление без сети недоступно'); return; }
+      await db.collection('workspaces').doc(this.workspaceId).collection('expenses').doc(id).delete();
+      this.toast('Удалено');
+    },
+    repeatLast(exp){
+      this.openAdd({ amount:String(exp.amount), currency:exp.currency, catId:exp.catId, type:exp.type, comment:exp.comment, method:exp.method });
+    },
+    async addCategory(){
+      if(!this.newCatName.trim()) return;
+      const id = 'c_'+Date.now();
+      const newCat = { id, name:this.newCatName.trim(), icon:'dots' };
+      this.categories.push(newCat);
+      if(db) await db.collection('workspaces').doc(this.workspaceId).set({categories:this.categories}, {merge:true});
+      lsSet(LS_KEYS.workspaceCache, { workspaceId:this.workspaceId, baseCurrency:this.baseCurrency, categories:this.categories });
+      this.form.catId = id;
+      this.newCatName=''; this.showNewCat=false;
+    },
+    async setBaseCurrency(c){
+      this.baseCurrency = c;
+      if(db) await db.collection('workspaces').doc(this.workspaceId).set({baseCurrency:c}, {merge:true});
+      lsSet(LS_KEYS.workspaceCache, { workspaceId:this.workspaceId, baseCurrency:this.baseCurrency, categories:this.categories });
+      this.recalcAll();
+    },
+
+    get filteredExpenses(){
+      let list = [...this.expenses];
+      if(this.filterCat!=='all') list = list.filter(e=>e.catId===this.filterCat);
+      if(this.filterType!=='all') list = list.filter(e=>e.type===this.filterType);
+
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
+
+      if(this.filterPeriod==='day'){
+        list = list.filter(e=>{
+          const d = new Date(e.date);
+          return d >= startOfToday && d < endOfToday;
+        });
+      } else if(this.filterPeriod==='week'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-7);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='month'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-30);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='range'){
+        if(this.customStartDate && this.customEndDate){
+          const start = new Date(this.customStartDate);
+          const end = new Date(this.customEndDate);
+          const endPlus = new Date(end.getFullYear(), end.getMonth(), end.getDate()+1);
+          list = list.filter(e=>{
+            const d = new Date(e.date);
+            return d >= start && d < endPlus;
+          });
+        }
+      }
+      // 'all' оставляем без дополнительной фильтрации по датам
+      return list;
+    },
+    get periodExpenses(){
+      // Базовый список без фильтров по категории/типу, только по выбранному периоду
+      let list = [...this.expenses];
+      const today = new Date();
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
+
+      if(this.filterPeriod==='day'){
+        list = list.filter(e=>{
+          const d = new Date(e.date);
+          return d >= startOfToday && d < endOfToday;
+        });
+      } else if(this.filterPeriod==='week'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-7);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='month'){
+        const cutoff = new Date(startOfToday);
+        cutoff.setDate(cutoff.getDate()-30);
+        list = list.filter(e=> new Date(e.date) >= cutoff);
+      } else if(this.filterPeriod==='range'){
+        if(this.customStartDate && this.customEndDate){
+          const start = new Date(this.customStartDate);
+          const end = new Date(this.customEndDate);
+          const endPlus = new Date(end.getFullYear(), end.getMonth(), end.getDate()+1);
+          list = list.filter(e=>{
+            const d = new Date(e.date);
+            return d >= start && d < endPlus;
+          });
+        }
+      }
+      return list;
+    },
+    get monthTotal(){
+      const cents = this.periodExpenses.reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
+      return this.fromCents(cents);
+    },
+    get unresolvedCount(){ return this.periodExpenses.filter(e => this.liveBaseAmount(e) === null).length; },
+    get oneTimeTotal(){
+      const cents = this.periodExpenses.filter(e=>e.type==='one').reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
+      return this.fromCents(cents);
+    },
+    get recurringTotal(){
+      const cents = this.periodExpenses.filter(e=>e.type==='recurring').reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
+      return this.fromCents(cents);
+    },
+    get categoryBreakdown(){
+      const map = {};
+      this.periodExpenses.forEach(e=>{
+        const v = this.liveBaseAmount(e);
+        if(v === null) return;
+        map[e.catId] = (map[e.catId]||0) + this.toCents(v);
+      });
+      return Object.entries(map).map(([catId,cents])=>({catId, total:this.fromCents(cents), cat:this.catInfo(catId)})).sort((a,b)=>b.total-a.total);
+    },
+    selfTestFx(){
+      let ok = true;
+      const saved = this.fxTrades;
+      this.fxTrades = [
+        { fromCurrency:'RUB', fromAmount:55000, toCurrency:'EUR', toAmount:500 },
+        { fromCurrency:'EUR', fromAmount:7000,  toCurrency:'RSD', toAmount:663000 }
+      ];
+      const rubToEur = this.findFxRate('RUB','EUR');
+      const eurToRsd = this.findFxRate('EUR','RSD');
+      const rubToRsd = this.findFxRate('RUB','RSD');
+      const rsdToRub = this.findFxRate('RSD','RUB');
+      const t1 = rubToEur!==null && eurToRsd!==null && rubToRsd!==null && rsdToRub!==null
+        && Math.abs(rubToRsd - rubToEur*eurToRsd) < 1e-9 && Math.abs(rubToRsd*rsdToRub - 1) < 1e-9;
+      console.log(t1?'✅ Тест 1 PASSED':'❌ Тест 1 FAILED', {rubToEur,eurToRsd,rubToRsd,rsdToRub});
+      ok = ok && t1;
+      const noPath = this.findFxRate('USD','GEL');
+      const t2 = noPath === null;
+      console.log(t2?'✅ Тест 2 PASSED':'❌ Тест 2 FAILED', {noPath});
+      ok = ok && t2;
+      this.fxTrades = saved;
+      console.log(ok?'✅✅ ВСЕ ТЕСТЫ ПРОШЛИ':'❌ ЕСТЬ ОШИБКИ');
+      return ok;
+    },
+    get recurringList(){
+      const seen = {};
+      this.expenses.filter(e=>e.type==='recurring').forEach(e=>{
+        if(!seen[e.catId] || new Date(e.date) > new Date(seen[e.catId].date)) seen[e.catId] = e;
+      });
+      return Object.values(seen);
+    },
+    fmt(n, cur){
+      if(n===undefined||n===null||isNaN(n)) return '—';
+      const sym = CUR_SYMBOL[cur]||cur;
+      return n.toLocaleString('ru-RU',{maximumFractionDigits:2}) + ' ' + sym;
+    },
+    renderChart(){
+      const canvas = document.getElementById('catChart');
+      if(!canvas) return;
+      if(this.chart) this.chart.destroy();
+      const bd = this.categoryBreakdown;
+      if(!bd.length) return;
+      const colors = ['#01696f','#da7101','#7a39bb','#d19900','#006494','#a12c7b','#437a22','#964219','#28251d'];
+      this.chart = new Chart(canvas, {
+        type:'doughnut',
+        data:{ labels: bd.map(b=>b.cat.name), datasets:[{ data: bd.map(b=>b.total), backgroundColor: colors, borderWidth:0 }] },
+        options:{ plugins:{ legend:{ position:'bottom', labels:{ color: getComputedStyle(document.documentElement).getPropertyValue('--color-text'), boxWidth:12, font:{size:11} } } }, cutout:'62%' }
+      });
+    }
+  }));
+});
+</script>
+
+<div class="app" x-data="appData" :data-theme="theme" >
+
+  <!-- LOADING -->
+  <div x-show="loading" class="login-screen">
+    <div class="skel" style="width:64px;height:64px;border-radius:50%"></div>
+  </div>
+
+  <!-- LOGIN -->
+  <div x-show="!loading && !user" x-cloak class="login-screen">
+    <div style="width:72px;height:72px;border-radius:20px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff" x-html="icon('home',36)"></div>
+    <div>
+      <h1 style="font-size:26px;margin-bottom:6px">Расходы на переезд</h1>
+      <p class="muted">Общий трекер трат для пары. Войдите через Google, чтобы синхронизировать данные с партнёром.</p>
+    </div>
+    <button class="google-btn" @click="signIn()">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.5 0-14 4.1-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.1-5.1l-6.5-5.3C29.6 35.4 27 36 24 36c-5.3 0-9.7-3.4-11.3-8l-6.6 5.1C9.9 39.7 16.4 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.6l6.5 5.3C41.4 35.9 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+      Войти через Google
+    </button>
+  </div>
+
+  <!-- WORKSPACE SETUP -->
+  <div x-show="!loading && user && !workspaceId && !workspaceLoading" x-cloak class="login-screen">
+    <h1 style="font-size:22px">Настройка пары</h1>
+    <p class="muted">Создайте общее пространство или введите код, который вам прислал партнёр.</p>
+    <button class="btn-primary" style="max-width:280px" @click="createWorkspace()">Создать новое пространство</button>
+    <div class="muted" style="font-size:13px">— или —</div>
+    <input class="input" style="max-width:280px" placeholder="Код пространства партнёра" x-model="joinCode">
+    <button class="btn-primary" style="max-width:280px;background:var(--color-text);" @click="joinWorkspace()">Присоединиться</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <template x-if="!loading && user && workspaceId">
+  <div>
+    <header class="topbar">
+      <div class="brand">
+        <span x-html="icon('home',22)" style="color:var(--color-primary)"></span>
+        <span x-text="tab==='feed'?'Лента':tab==='stats'?'Статистика':tab==='recurring'?'Регулярные':'Настройки'"></span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="net-indicator" :class="isOnline ? 'online' : 'offline'">
+          <span class="net-dot"></span>
+          <span x-text="isOnline ? 'Онлайн' : 'Офлайн'"></span>
+        </div>
+        <button class="iconbtn" @click="manualRefresh()" :class="refreshing && 'spin-icon'" x-html="icon('refresh')" aria-label="Обновить"></button>
+        <button class="iconbtn" @click="toggleTheme()" x-html="theme==='dark'?icon('sun'):icon('moon')"></button>
+        <button class="iconbtn" @click="showSettings=true" x-html="icon('settings')"></button>
+      </div>
+    </header>
+
+    <main>
+      <!-- FEED TAB -->
+      <div x-show="tab==='feed'" class="stack">
+        <div class="card">
+          <div class="faint">Всего за месяц</div>
+          <div class="big-total" x-text="fmt(monthTotal, baseCurrency)"></div>
+          <div class="faint" x-show="unresolvedCount>0" x-text="unresolvedCount+' расход(ов) без курса — не учтены в итоге'" style="color:var(--color-warning)"></div>
+        </div>
+
+        <div class="filter-row">
+          <button class="chip" :class="filterPeriod==='day'&&'active'" @click="setPeriod('day')">День</button>
+          <button class="chip" :class="filterPeriod==='week'&&'active'" @click="setPeriod('week')">Неделя</button>
+          <button class="chip" :class="filterPeriod==='month'&&'active'" @click="setPeriod('month')">Месяц</button>
+          <button class="chip" :class="filterPeriod==='all'&&'active'" @click="setPeriod('all')">Всё время</button>
+          <button class="chip" :class="filterPeriod==='range'&&'active'" @click="setPeriod('range')">Период</button>
+          <button class="chip" :class="filterType==='one'&&'active'" @click="filterType = filterType==='one'?'all':'one'">Разовые</button>
+          <button class="chip" :class="filterType==='recurring'&&'active'" @click="filterType = filterType==='recurring'?'all':'recurring'">Регулярные</button>
+        </div>
+        <div class="filter-row" x-show="filterPeriod==='range'" x-cloak>
+          <input type="date" class="input" style="max-width:160px" x-model="customStartDate" @change="recalcAll()">
+          <input type="date" class="input" style="max-width:160px" x-model="customEndDate" @change="recalcAll()">
+        </div>
+
+        <div class="card" style="padding:8px 16px">
+          <template x-if="filteredExpenses.length===0">
+            <div class="empty-state" style="padding:32px 8px">
+              <div class="empty-state-icon" x-html="icon('cart',40)"></div>
+              <h3 style="font-size:16px;margin-bottom:6px">Пока нет расходов</h3>
+              <p class="faint">Нажмите «+», чтобы добавить первый расход переезда.</p>
+            </div>
+          </template>
+          <template x-for="exp in filteredExpenses" :key="exp.id">
+            <div class="expense-row">
+              <div class="exp-icon" x-html="icon(catInfo(exp.catId).icon,20)"></div>
+              <div class="exp-info">
+                <div class="exp-cat" x-text="catInfo(exp.catId).name"></div>
+                <div class="exp-meta">
+                  <span x-text="exp.date"></span>
+                  <span x-show="exp.comment"> · </span><span x-text="exp.comment"></span>
+                  <span x-show="exp.type==='recurring'"> · 🔁</span>
+                  <span x-show="exp._pending" style="color:var(--color-warning)"> · ⏳ ожидает синхронизации</span>
+                </div>
+              </div>
+              <div class="exp-amt">
+                <span x-text="fmt(exp.amount, exp.currency)"></span>
+                <template x-if="exp.currency!==baseCurrency">
+                  <small :style="liveBaseAmount(exp)===null && 'color:var(--color-warning)'" x-text="liveBaseAmount(exp)===null ? ('Нет курса в '+baseCurrency) : ('('+fmt(liveBaseAmount(exp), baseCurrency)+')')"></small>
+                </template>
+              </div>
+              <button class="iconbtn" style="width:28px;height:28px" @click="deleteExpense(exp.id)">✕</button>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- STATS TAB -->
+      <div x-show="tab==='stats'" class="stack">
+        <div class="kpi-grid">
+          <div class="kpi"><div class="faint">Всего за период</div><div class="v" x-text="fmt(monthTotal, baseCurrency)"></div></div>
+          <div class="kpi"><div class="faint">Разовые</div><div class="v" x-text="fmt(oneTimeTotal, baseCurrency)"></div></div>
+          <div class="kpi"><div class="faint">Регулярные</div><div class="v" x-text="fmt(recurringTotal, baseCurrency)"></div></div>
+          <div class="kpi"><div class="faint">Категорий</div><div class="v" x-text="categoryBreakdown.length"></div></div>
+        </div>
+        <div class="filter-row">
+          <button class="chip" :class="filterPeriod==='day'&&'active'" @click="setPeriod('day')">День</button>
+          <button class="chip" :class="filterPeriod==='week'&&'active'" @click="setPeriod('week')">Неделя</button>
+          <button class="chip" :class="filterPeriod==='month'&&'active'" @click="setPeriod('month')">Месяц</button>
+          <button class="chip" :class="filterPeriod==='all'&&'active'" @click="setPeriod('all')">Всё время</button>
+          <button class="chip" :class="filterPeriod==='range'&&'active'" @click="setPeriod('range')">Период</button>
+        </div>
+        <div class="filter-row" x-show="filterPeriod==='range'" x-cloak>
+          <input type="date" class="input" style="max-width:160px" x-model="customStartDate" @change="recalcAll()">
+          <input type="date" class="input" style="max-width:160px" x-model="customEndDate" @change="recalcAll()">
+        </div>
+        <div class="card">
+          <div class="section-title" style="margin-bottom:10px">По категориям</div>
+          <canvas id="catChart" height="220"></canvas>
+        </div>
+        <div class="card stack">
+          <template x-for="b in categoryBreakdown" :key="b.catId">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:8px"><span x-html="icon(b.cat.icon,16)" style="color:var(--color-primary)"></span><span style="font-size:14px" x-text="b.cat.name"></span></div>
+              <span style="font-weight:600;font-size:14px" x-text="fmt(b.total, baseCurrency)"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- RECURRING TAB -->
+      <div x-show="tab==='recurring'" class="stack">
+        <p class="muted" style="font-size:13px">Последние регулярные платежи по категориям — аренда, интернет, страховка и т.д.</p>
+        <div class="card" style="padding:8px 16px">
+          <template x-if="recurringList.length===0">
+            <div class="empty-state" style="padding:32px 8px">
+              <div class="empty-state-icon" x-html="icon('repeat',40)"></div>
+              <h3 style="font-size:16px">Нет регулярных платежей</h3>
+              <p class="faint">Отметьте расход как «Регулярный» при добавлении.</p>
+            </div>
+          </template>
+          <template x-for="exp in recurringList" :key="exp.id">
+            <div class="expense-row">
+              <div class="exp-icon" x-html="icon(catInfo(exp.catId).icon,20)"></div>
+              <div class="exp-info">
+                <div class="exp-cat" x-text="catInfo(exp.catId).name"></div>
+                <div class="exp-meta" x-text="'Последний раз: '+exp.date"></div>
+              </div>
+              <div class="exp-amt" x-text="fmt(exp.amount, exp.currency)"></div>
+              <button class="iconbtn" style="width:32px;height:32px" @click="repeatLast(exp)" x-html="icon('plus',16)"></button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </main>
+
+    <!-- TABBAR -->
+    <nav class="tabbar">
+      <button class="tab" :class="tab==='feed'&&'active'" @click="tab='feed'" x-html="icon('feed')+'<span>Лента</span>'"></button>
+      <button class="tab" :class="tab==='stats'&&'active'" @click="tab='stats'" x-html="icon('stats')+'<span>Статистика</span>'"></button>
+      <button class="tab" :class="tab==='recurring'&&'active'" @click="tab='recurring'" x-html="icon('repeat')+'<span>Регулярные</span>'"></button>
+    </nav>
+
+    <!-- FAB -->
+    <button class="fab" @click="openAdd()" x-html="icon('plus',28)"></button>
+
+    <!-- ADD EXPENSE SHEET -->
+    <div class="sheet-overlay" x-show="showAdd" x-cloak x-transition.opacity @click.self="showAdd=false">
+      <div class="sheet-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <button class="iconbtn" @click="showAdd=false" x-html="icon('back')"></button>
+          <h2 style="font-size:16px">Новый расход</h2>
+          <span style="width:40px"></span>
+        </div>
+
+        <div class="stack" style="margin-top:8px">
+          <input class="amount-input" type="number" inputmode="decimal" placeholder="0" x-model="form.amount" autofocus>
+
+          <div class="currency-row">
+            <button class="curbtn" :class="form.currency==='RUB'&&'active'" @click="form.currency='RUB'">RUB ₽</button>
+            <button class="curbtn" :class="form.currency==='RSD'&&'active'" @click="form.currency='RSD'">RSD дин</button>
+            <button class="curbtn" :class="form.currency==='GEL'&&'active'" @click="form.currency='GEL'">GEL ₾</button>
+            <button class="curbtn" :class="form.currency==='USD'&&'active'" @click="form.currency='USD'">USD $</button>
+            <button class="curbtn" :class="form.currency==='EUR'&&'active'" @click="form.currency='EUR'">EUR €</button>
+          </div>
+
+          <div>
+            <span class="field-label">Категория</span>
+            <div class="cat-grid">
+              <template x-for="cat in categories" :key="cat.id">
+                <button class="cat-tile" :class="form.catId===cat.id&&'active'" @click="form.catId=cat.id; lsSet(LS_KEYS.lastCat, cat.id)">
+                  <span x-html="icon(cat.icon,22)"></span>
+                  <span x-text="cat.name"></span>
+                </button>
+              </template>
+              <button class="cat-tile" @click="showNewCat=true">
+                <span x-html="icon('plus',22)"></span>
+                <span>Новая</span>
+              </button>
+            </div>
+            <div x-show="showNewCat" style="display:flex;gap:8px;margin-top:8px">
+              <input class="input" placeholder="Название категории" x-model="newCatName">
+              <button class="btn-primary" style="width:auto;padding:12px 16px" @click="addCategory()">OK</button>
+            </div>
+          </div>
+
+          <div>
+            <span class="field-label">Тип расхода</span>
+            <div class="toggle-row">
+              <button class="toggle-opt" :class="form.type==='one'&&'active'" @click="form.type='one'">Разовый</button>
+              <button class="toggle-opt" :class="form.type==='recurring'&&'active'" @click="form.type='recurring'">Регулярный</button>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <div style="flex:1">
+              <span class="field-label">Дата</span>
+              <input class="input" type="date" x-model="form.date">
+            </div>
+            <div style="flex:1">
+              <span class="field-label">Оплата</span>
+              <div class="toggle-row">
+                <button class="toggle-opt" :class="form.method==='card'&&'active'" @click="form.method='card'" x-html="icon('card',16)"></button>
+                <button class="toggle-opt" :class="form.method==='cash'&&'active'" @click="form.method='cash'" x-html="icon('cash',16)"></button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="field-label">Комментарий (необязательно)</span>
+            <input class="input" placeholder="Например: аренда за март" x-model="form.comment">
+          </div>
+
+          <button class="btn-primary" @click="submitExpense()" :disabled="!form.amount">Сохранить расход</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS SHEET -->
+    <div class="sheet-overlay" x-show="showSettings" x-cloak x-transition.opacity @click.self="showSettings=false">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="stack">
+          <h2 style="font-size:18px">Настройки</h2>
+          <div>
+            <span class="field-label">Базовая валюта отчётов</span>
+            <div class="currency-row">
+              <template x-for="c in CURRENCIES">
+                <button class="curbtn" :class="baseCurrency===c&&'active'" @click="setBaseCurrency(c)" x-text="c"></button>
+              </template>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span class="field-label" style="margin-bottom:0">Курсы обмена валют</span>
+              <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openFxForm()" x-html="icon('plus',16)"></button>
+            </div>
+            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при обмене валюты. Можно указывать обмены между любыми валютами — приложение само посчитает курс через цепочку.</p>
+            <div class="card stack" style="padding:8px 16px" x-show="fxTrades.length">
+              <template x-for="t in fxTrades" :key="t.id">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+                  <div>
+                    <div style="font-weight:600;font-size:14px" x-text="t.fromAmount+' '+t.fromCurrency+' → '+t.toAmount+' '+t.toCurrency"></div>
+                    <div class="exp-meta" x-text="t.date"></div>
+                  </div>
+                  <button class="iconbtn" style="width:28px;height:28px" @click="deleteFx(t.id)">✕</button>
+                </div>
+              </template>
+            </div>
+            <div class="card" x-show="!fxTrades.length">
+              <p class="faint">Курсов обмена пока нет.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="faint">Код пространства (для партнёра)</div>
+            <div style="font-family:monospace;font-size:14px;word-break:break-all" x-text="workspaceId"></div>
+          </div>
+          <div class="faint" x-text="'Вы вошли как: '+(user&&user.email)"></div>
+          <button class="btn-ghost" @click="signOut(); showSettings=false" style="color:var(--color-error)">Выйти из аккаунта</button>
+          <button class="btn-ghost" @click="showSettings=false">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FX TRADE SHEET -->
+    <div class="sheet-overlay" x-show="showFxForm" x-cloak x-transition.opacity @click.self="showFxForm=false">
+      <div class="sheet-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <button class="iconbtn" @click="showFxForm=false" x-html="icon('back')"></button>
+          <h2 style="font-size:16px">Курс обмена валют</h2>
+          <span style="width:40px"></span>
+        </div>
+        <div class="stack" style="margin-top:8px">
+          <p class="faint">Например: отдали 663000 RUB, получили 7000 EUR.</p>
+          <div>
+            <span class="field-label">Отдали (валюта продажи)</span>
+            <div class="currency-row">
+              <template x-for="c in CURRENCIES">
+                <button class="curbtn" :class="newFx.fromCurrency===c&&'active'" @click="newFx.fromCurrency=c" x-text="c"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <span class="field-label">Сумма продажи</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="663000" x-model="newFx.fromAmount">
+          </div>
+          <div>
+            <span class="field-label">Получили (валюта покупки)</span>
+            <div class="currency-row">
+              <template x-for="c in CURRENCIES">
+                <button class="curbtn" :class="newFx.toCurrency===c&&'active'" @click="newFx.toCurrency=c" x-text="c"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <span class="field-label">Сумма покупки</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="7000" x-model="newFx.toAmount">
+          </div>
+          <div>
+            <span class="field-label">Дата обмена</span>
+            <input class="input" type="date" x-model="newFx.date">
+          </div>
+          <button class="btn-primary" @click="submitFx()" :disabled="fxSaving || !newFx.fromAmount || !newFx.toAmount || newFx.fromCurrency===newFx.toCurrency">
+            <span x-text="fxSaving ? 'Сохранение…' : 'Сохранить курс'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" x-show="toastMsg" x-cloak x-text="toastMsg" x-transition></div>
+
+</div>
+
+<script>
+// Блокировка системного pull-to-refresh: предотвращает переход браузера/TWA
+// в нативный "you are offline" интерстициал при свайпе вниз в офлайне.
+// Разрешаем обычный вертикальный скролл внутри контента, но гасим
+// избыточное "перетягивание" страницы вниз, когда она уже в самом верху.
+(function(){
+  let startY = 0;
+  let blocking = false;
+
+  document.addEventListener('touchstart', function(e){
+    if(e.touches.length !== 1) return;
+    startY = e.touches[0].clientY;
+    const scroller = document.querySelector('main');
+    blocking = (window.scrollY === 0) && (!scroller || scroller.scrollTop === 0);
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e){
+    if(!blocking) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    if(diff > 0){
+      e.preventDefault();
+    }
+  }, { passive: false });
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('[app] Service Worker зарегистрирован:', reg.scope);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if(newWorker){
+            newWorker.addEventListener('statechange', () => {
+              console.log('[app] SW state:', newWorker.state);
+            });
+          }
+        });
+      })
+      .catch(err => {
+        console.error('[app] Не удалось зарегистрировать Service Worker:', err);
+      });
+  });
+
+  // Если контроллер сменился (обновилась версия SW), тихо перезагружаем
+  // страницу один раз, чтобы новая версия сразу начала обслуживать запросы.
+  let refreshingPage = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(refreshingPage) return;
+    refreshingPage = true;
+    window.location.reload();
+  });
+}
+</script>
+</body>
+</html>
