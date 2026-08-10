@@ -874,7 +874,7 @@ document.addEventListener('alpine:init', () => {
 
   <!-- MAIN APP -->
   <template x-if="!loading && user && workspaceId">
-  <div>
+  <div style="display:flex;flex-direction:column;flex:1;min-height:0;width:100%">
     <header class="topbar">
       <div class="brand">
         <span x-html="icon('home',22)" style="color:var(--color-primary)"></span>
