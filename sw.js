@@ -6,7 +6,6 @@ const RUNTIME_CACHE = `ce-runtime-${VERSION}`;
 const SHELL_HTML_URL = './couple-expenses.html';
 
 const SHELL_ASSETS = [
-  './',
   SHELL_HTML_URL,
   './manifest.json',
   './assets/icon-192.png',
