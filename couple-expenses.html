@@ -414,11 +414,29 @@ document.addEventListener('alpine:init', () => {
       if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
     },
 
-    async signIn(){
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try{ await auth.signInWithPopup(provider); }
-      catch(e){ this.toast('Ошибка входа: '+e.message); }
-    },
+   // ЗАМЕНИТЬ существующую функцию signIn() на эту версию.
+// Разница: если пользователь нажал кнопку раньше, чем Firebase успел
+// подключиться (auth ещё null) — вместо краша функция сама дожидается
+// готовности (используя retry-логику из ensureFirebase()) и только потом
+// открывает окно входа. Плюс любые ошибки самого signInWithPopup теперь
+// показываются пользователю тостом, а не падают в консоль молча.
+async signIn(){
+  if(!auth){
+    this.toast('Подключаемся к серверу…');
+    const ready = await ensureFirebase();
+    if(!ready || !auth){
+      this.toast('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз');
+      return;
+    }
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try{
+    await auth.signInWithPopup(provider);
+  }catch(e){
+    console.error('signIn failed', e);
+    this.toast(e.message || 'Ошибка входа');
+  }
+},
     async signOut(){ await auth.signOut(); this.workspaceId=null; this.expenses=[]; },
 
     async loadWorkspace(){
