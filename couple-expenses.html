@@ -73,7 +73,8 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .currency-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .curbtn{padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--color-border);font-weight:600;font-size:14px;color:var(--color-text-muted);transition:all .15s}
 .curbtn.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
-.cat-grid{display:grid;grid-t-columns:repeat(3,1fr);gap:10px}
+.cat-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:10px}
+.cat-tile{width:100%;box-sizing:border-box}
 .cat-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border-radius:var(--radius-lg);border:1.5px solid var(--color-border);background:var(--color-surface);min-height:80px;justify-content:center;transition:all .15s}
 .cat-tile.active{border-color:var(--color-primary);background:var(--color-primary-highlight)}
 .cat-tile svg{width:24px;height:24px;color:var(--color-text-muted)}
@@ -101,7 +102,8 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .chip.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
 .filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .filter-row::-webkit-scrollbar{display:none}
-.kpi-grid{display:grid;grid-t-columns:1fr 1fr;gap:10px}
+.kpi-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px}
+.kpi{width:100%;box-sizing:border-box}
 .kpi{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:14px}
 .kpi .v{font-family:var(--font-display);font-weight:800;font-size:22px}
 .section-title{font-weight:700;font-size:15px;margin-bottom:2px}
@@ -443,6 +445,11 @@ document.addEventListener('alpine:init', () => {
       });
       db.collection('workspaces').doc(this.workspaceId).collection('expenses').orderBy('date','desc').onSnapshot(snap=>{
         const remoteExpenses = snap.docs.map(d=>({id:d.id, ...d.data()}));
+         remoteExpenses.sort((a, b) => { if(a.date !== b.date) return a.date < b.date ? 1 : -1;
+          const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+          const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+          return bt - at;
+        });
         const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
         this.expenses = [...pendingRows, ...remoteExpenses];
         lsSet(LS_KEYS.expensesCache, this.expenses.filter(e => !e._pending));
