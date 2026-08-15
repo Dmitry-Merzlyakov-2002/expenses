@@ -143,7 +143,7 @@ let db = null;
 let persistenceReady = Promise.resolve();
 let firebaseReady = false;
 
-const LS_KEYS = { queue: 'ce_pending_queue_v1', lastCat: 'ce_last_catid_v1', expensesCache: 'ce_expenses_cache_v1', workspaceCache: 'ce_workspace_cache_v1' };
+const LS_KEYS = { queue: 'ce_pending_queue_v1', lastCat: 'ce_last_catid_v1', expensesCache: 'ce_expenses_cache_v1', workspaceCache: 'ce_workspace_cache_v1', fxTradesCache: 'ce_fxtrades_cache_v1' };
 function lsGet(key, fallback){
   try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
   catch(e){ return fallback; }
@@ -278,6 +278,7 @@ document.addEventListener('alpine:init', () => {
     chart: null,
     refreshing: false,
     fxTrades: [],
+    fxTradesUpdatedAt: null,
     showFxForm: false,
     fxSaving: false,
     newFx: { fromCurrency:'RUB', fromAmount:'', toCurrency:'EUR', toAmount:'', date:'' },
@@ -306,6 +307,11 @@ document.addEventListener('alpine:init', () => {
       const savedCatId = lsGet(LS_KEYS.lastCat, null);
       const cachedExpenses = lsGet(LS_KEYS.expensesCache, []);
       const cachedWorkspace = lsGet(LS_KEYS.workspaceCache, null);
+      const cachedFx = lsGet(LS_KEYS.fxTradesCache, { fxTrades: [], updatedAt: null });
+      if(Array.isArray(cachedFx.fxTrades) && cachedFx.fxTrades.length){
+        this.fxTrades = cachedFx.fxTrades;
+        this.fxTradesUpdatedAt = cachedFx.updatedAt || null;
+      }
       if(savedCatId) this.form.catId = savedCatId;
       if(cachedWorkspace){
         this.workspaceId = cachedWorkspace.workspaceId || this.workspaceId;
@@ -552,6 +558,8 @@ async signIn(){
         .onSnapshot(snap=>{
           this.fxTrades = snap.docs.map(d=>({id:d.id, ...d.data()}))
             .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+          this.fxTradesUpdatedAt = Date.now();
+          lsSet(LS_KEYS.fxTradesCache, { fxTrades: this.fxTrades, updatedAt: this.fxTradesUpdatedAt });
           console.log('[loadFxTrades] загружено записей:', this.fxTrades.length);
           this.recalcAll();
         }, err => {
@@ -814,6 +822,17 @@ async signIn(){
       return this.fromCents(cents);
     },
     get unresolvedCount(){ return this.periodExpenses.filter(e => this.liveBaseAmount(e) === null).length; },
+    get fxRatesStaleLabel(){
+      if(!this.fxTradesUpdatedAt) return null;
+      const d = new Date(this.fxTradesUpdatedAt);
+      const pad = n => String(n).padStart(2,'0');
+      const dateStr = `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      const isOld = (Date.now() - this.fxTradesUpdatedAt) > 7*24*60*60*1000;
+      if(!this.isOnline){
+        return `Курсы от ${dateStr}, офлайн${isOld ? ' (устарели, >7 дней)' : ''}`;
+      }
+      return isOld ? `Курсы обновлялись давно (${dateStr}), проверьте соединение` : null;
+    },
     get oneTimeTotal(){
       const cents = this.periodExpenses.filter(e=>e.type==='one').reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
       return this.fromCents(cents);
@@ -1149,6 +1168,7 @@ async signIn(){
               <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openFxForm()" x-html="icon('plus',16)"></button>
             </div>
             <p class="faint" style="margin-bottom:8px">Фиксируется один раз при обмене валюты. Можно указывать обмены между любыми валютами — приложение само посчитает курс через цепочку.</p>
+            <div class="faint" x-show="fxRatesStaleLabel" x-text="fxRatesStaleLabel" style="margin-bottom:8px;color:var(--color-warning)"></div>
             <div class="card stack" style="padding:8px 16px" x-show="fxTrades.length">
               <template x-for="t in fxTrades" :key="t.id">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
