@@ -121,6 +121,7 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .spin-icon svg{animation:spin-rotate .8s linear infinite}
 @keyframes spin-rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes netpulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes rainbow-shift{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 [x-cloak]{display:none!important}
 ::selection{background:oklch(from var(--color-primary) l c h/.25)}
 input[type=date]{color-scheme:light dark}
@@ -966,6 +967,18 @@ async signIn(){
           <span class="net-dot"></span>
           <span x-text="isOnline ? 'Онлайн' : 'Офлайн'"></span>
         </div>
+         <button class="iconbtn" @click="toast('Версия v1 · настроение отличное 🌈')" style="position:relative;overflow:hidden">
+           <span style="
+             font-weight:800;
+             font-size:13px;
+             background:linear-gradient(90deg,#ff0000,#ff8c00,#ffee00,#00c853,#00b0ff,#7c4dff,#ff00c8);
+             background-size:200% 100%;
+             -webkit-background-clip:text;
+             background-clip:text;
+             color:transparent;
+             animation:rainbow-shift 3s linear infinite;
+           ">v1</span>
+         </button>
         <button class="iconbtn" @click="manualRefresh()" :class="refreshing && 'spin-icon'" x-html="icon('refresh')" aria-label="Обновить"></button>
         <button class="iconbtn" @click="toggleTheme()" x-html="theme==='dark'?icon('sun'):icon('moon')"></button>
         <button class="iconbtn" @click="showSettings=true" x-html="icon('settings')"></button>
