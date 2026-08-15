@@ -968,17 +968,7 @@ async signIn(){
           <span x-text="isOnline ? 'Онлайн' : 'Офлайн'"></span>
         </div>
          <button class="iconbtn" @click="toast('Версия v1 · настроение отличное 🌈')" style="position:relative;overflow:hidden">
-           <span style="
-             font-weight:800;
-             font-size:13px;
-             background:linear-gradient(90deg,#ff0000,#ff8c00,#ffee00,#00c853,#00b0ff,#7c4dff,#ff00c8);
-             background-size:200% 100%;
-             -webkit-background-clip:text;
-             background-clip:text;
-             color:transparent;
-             animation:rainbow-shift 3s linear infinite;
-           ">v1</span>
-         </button>
+         <span style="font-weight:800;font-size:13px;background:linear-gradient(90deg,#ff0000,#ff8c00,#ffee00,#00c853,#00b0ff,#7c4dff,#ff00c8);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rainbow-shift 3s linear infinite;">v1</span></button>
         <button class="iconbtn" @click="manualRefresh()" :class="refreshing && 'spin-icon'" x-html="icon('refresh')" aria-label="Обновить"></button>
         <button class="iconbtn" @click="toggleTheme()" x-html="theme==='dark'?icon('sun'):icon('moon')"></button>
         <button class="iconbtn" @click="showSettings=true" x-html="icon('settings')"></button>
