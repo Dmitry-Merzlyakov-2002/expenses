@@ -336,11 +336,20 @@ document.addEventListener('alpine:init', () => {
         return;
       }
       this.startupStatus = this.isOnline ? 'Синхронизация…' : 'Оффлайн: показаны локальные данные';
-      auth.onAuthStateChanged(async (u) => {
-        this.user = u;
-        this.loading = false;
-        if(u){ await this.loadWorkspace(); }
-      });
+// Обрабатываем результат signInWithRedirect (если пользователь только что
+// вернулся со страницы входа Google). Ошибки здесь не критичны — если
+// редиректа не было, getRedirectResult просто вернёт null.
+try{
+  await auth.getRedirectResult();
+}catch(e){
+  console.error('getRedirectResult failed', e);
+  this.toast(e.message || 'Ошибка при завершении входа');
+}
+auth.onAuthStateChanged(async (u) => {
+  this.user = u;
+  this.loading = false;
+  if(u){ await this.loadWorkspace(); }
+});
     },
     today(){ return new Date().toISOString().slice(0,10); },
     toast(msg){ this.toastMsg = msg; setTimeout(()=>this.toastMsg='', 2200); },
@@ -437,7 +446,8 @@ async signIn(){
   }
   const provider = new firebase.auth.GoogleAuthProvider();
   try{
-    await auth.signInWithPopup(provider);
+    await auth.signInWithRedirect(provider);
+    // Страница перезагрузится, результат обрабатывается в startFirebaseFlow() через getRedirectResult()
   }catch(e){
     console.error('signIn failed', e);
     this.toast(e.message || 'Ошибка входа');
