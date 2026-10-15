@@ -129,6 +129,21 @@ input[type=date]{color-scheme:light dark}
 </head>
 <body>
 
+<!-- Глобальный перехватчик критических ошибок -->
+<div id="crash-screen" style="display:none; position:fixed; inset:0; background:var(--color-error, #a12c7b); color:#fff; z-index:9999; padding:20px; overflow:auto;">
+  <h2 style="margin-bottom:10px">Критическая ошибка</h2>
+  <p style="font-size:14px; margin-bottom:10px">Сделайте скриншот и нажмите кнопку сброса:</p>
+  <pre id="crash-log" style="font-size:12px; white-space:pre-wrap; word-break:break-all; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;"></pre>
+  <button onclick="localStorage.clear(); navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister())); location.reload();" style="margin-top:20px; width:100%; padding:14px; background:#fff; color:#a12c7b; border-radius:8px; font-weight:bold; border:none;">Сбросить PWA и перезагрузить</button>
+</div>
+<script>
+  window.onerror = function(msg, url, lineNo, columnNo, error) {
+    document.getElementById('crash-screen').style.display = 'block';
+    document.getElementById('crash-log').innerText = msg + '\n' + url + ':' + lineNo + '\n' + (error && error.stack ? error.stack : '');
+  };
+</script>
+<!-- Конец блока перехватчика -->
+
 <script>
 /* ===== Firebase config — replace with your project's config before deploying ===== */
 const firebaseConfig = {
@@ -203,16 +218,11 @@ function hasFirebaseSdk(){
 function hasValidFirebaseConfig(){
   return firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY' && firebaseConfig.projectId && firebaseConfig.projectId !== 'YOUR_PROJECT';
 }
-// ЗАМЕНИТЬ существующую функцию ensureFirebase() на эту версию.
-// Разница: вместо однократной попытки, которая может наткнуться на то, что
-// firebase-auth-compat.js или firebase-firestore-compat.js ещё не успели
-// выполниться (defer-скрипты могут доисполняться чуть позже setTimeout(...,0)
-// из-за сети/Service Worker), теперь функция ждёт (с повторными попытками
-// до ~4 секунд), пока ВСЕ нужные методы реально появятся как функции.
+
 async function ensureFirebase(){
   if(firebaseReady) return true;
 
-  const maxAttempts = 40;      // 40 * 100ms = до 4 секунд ожидания
+  const maxAttempts = 40;
   const delayMs = 100;
 
   for(let attempt = 0; attempt < maxAttempts; attempt++){
@@ -239,14 +249,13 @@ async function ensureFirebase(){
         return true;
       }catch(e){
         console.warn('Firebase bootstrap failed on attempt', attempt, e);
-        // не выходим — вдруг это была временная нестыковка, пробуем ещё раз
       }
     }
 
     await new Promise(r => setTimeout(r, delayMs));
   }
 
-  console.error('Firebase SDK не инициализировался за отведённое время (все скрипты так и не стали функциями)');
+  console.error('Firebase SDK не инициализировался за отведённое время');
   return false;
 }
 document.addEventListener('alpine:init', () => {
@@ -254,6 +263,7 @@ document.addEventListener('alpine:init', () => {
     theme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark':'light',
     isOnline: navigator.onLine,
     pendingQueue: [],
+    _flushing: false,
     _pingTimer: null,
     user: null,
     loading: true,
@@ -298,7 +308,19 @@ document.addEventListener('alpine:init', () => {
       this.$nextTick(() => this.renderChart());
       setTimeout(() => this.checkRealConnectivity(), 0);
       this._pingTimer = setInterval(() => this.checkRealConnectivity(), 15000);
-      window.addEventListener('online', () => this.checkRealConnectivity());
+      
+      window.addEventListener('online', () => {
+        this.checkRealConnectivity();
+        if(this.pendingQueue.length) this.flushPendingQueue();
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') {
+          this.checkRealConnectivity();
+          if(this.pendingQueue.length) this.flushPendingQueue();
+        }
+      });
+
       window.addEventListener('offline', () => {
         this.isOnline = false;
         this.toast('Нет подключения к интернету');
@@ -340,9 +362,6 @@ document.addEventListener('alpine:init', () => {
         return;
       }
       this.startupStatus = this.isOnline ? 'Синхронизация…' : 'Оффлайн: показаны локальные данные';
-      // Обрабатываем результат signInWithRedirect (актуально для обычного браузера,
-      // не для PWA — там используется signInWithPopup). Если редиректа не было,
-      // getRedirectResult() просто вернёт null без ошибки.
       try{
         await auth.getRedirectResult();
       }catch(e){
@@ -410,68 +429,66 @@ document.addEventListener('alpine:init', () => {
       }
       return this.isOnline;
     },
+    
     async flushPendingQueue(){
+      if(this._flushing) return;
       if(!this.pendingQueue.length || !this.workspaceId) return;
-      const toSync = [...this.pendingQueue];
-      this.pendingQueue = [];
-      for(const payload of toSync){
-        const { _localId, createdAtLocal, ...cleanPayload } = payload;
-        try{
-          await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
-            ...cleanPayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-         }catch(e){
-               console.warn('Синхронизация записи отложена', e);
-               this.pendingQueue.push(payload);
-             }
-           }
-           
-           if(this.pendingQueue.length){
-             lsSet(LS_KEYS.queue, this.pendingQueue);
-           }else{
-             lsRemove(LS_KEYS.queue);
-           }
-         
-           // Безопасное перестроение UI: возвращаем на экран записи, которые не удалось отправить
-           const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
-           const remoteOnly = this.expenses.filter(e => !e._pending);
-           this.expenses = [...pendingRows, ...remoteOnly];
-           
-           if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
-         }
+      
+      this._flushing = true;
+      
+      try {
+        const toSync = [...this.pendingQueue];
+        this.pendingQueue = [];
+        
+        for(const payload of toSync){
+          const { _localId, createdAtLocal, ...cleanPayload } = payload;
+          try {
+            await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
+              ...cleanPayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch(e) {
+            console.warn('Синхронизация записи отложена', e);
+            this.pendingQueue.push(payload);
+          }
+        }
+        
+        if(this.pendingQueue.length){
+          lsSet(LS_KEYS.queue, this.pendingQueue);
+        }else{
+          lsRemove(LS_KEYS.queue);
+        }
+      
+        const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
+        const remoteOnly = this.expenses.filter(e => !e._pending);
+        this.expenses = [...pendingRows, ...remoteOnly];
+        
+        if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
+      } finally {
+        this._flushing = false;
+      }
+    },
 
-   // ЗАМЕНИТЬ существующую функцию signIn() на эту версию.
-// Разница: если пользователь нажал кнопку раньше, чем Firebase успел
-// подключиться (auth ещё null) — вместо краша функция сама дожидается
-// готовности (используя retry-логику из ensureFirebase()) и только потом
-// открывает окно входа. Плюс любые ошибки самого signInWithPopup теперь
-// показываются пользователю тостом, а не падают в консоль молча.
-async signIn(){
-  if(!auth){
-    this.toast('Подключаемся к серверу…');
-    const ready = await ensureFirebase();
-    if(!ready || !auth){
-      this.toast('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз');
-      return;
-    }
-  }
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try{
-    // В установленном PWA (иконка на главном экране iOS) signInWithRedirect
-    // не работает — Safari возвращает пользователя не в контейнер PWA, а в
-    // обычный Safari, и getRedirectResult() всегда получает null (известное
-    // ограничение WebKit). Поэтому в standalone-режиме используем popup,
-    // а в обычном браузере — надёжный redirect.
-    if(isStandalonePWA()){
-      await auth.signInWithPopup(provider);
-    }else{
-      await auth.signInWithRedirect(provider);
-    }
-  }catch(e){
-    console.error('signIn failed', e);
-    this.toast(e.message || 'Ошибка входа');
-  }
-},
+    async signIn(){
+      if(!auth){
+        this.toast('Подключаемся к серверу…');
+        const ready = await ensureFirebase();
+        if(!ready || !auth){
+          this.toast('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз');
+          return;
+        }
+      }
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try{
+        if(isStandalonePWA()){
+          await auth.signInWithPopup(provider);
+        }else{
+          await auth.signInWithRedirect(provider);
+        }
+      }catch(e){
+        console.error('signIn failed', e);
+        this.toast(e.message || 'Ошибка входа');
+      }
+    },
     async signOut(){ await auth.signOut(); this.workspaceId=null; this.expenses=[]; },
 
     async loadWorkspace(){
@@ -514,16 +531,13 @@ async signIn(){
       });
       db.collection('workspaces').doc(this.workspaceId).collection('expenses').orderBy('date','desc').onSnapshot(snap=>{
         const remoteExpenses = snap.docs.map(d=>({id:d.id, ...d.data()}));
-         remoteExpenses.sort((a, b) => { if(a.date !== b.date) return a.date < b.date ? 1 : -1;
-  
-  // Если createdAt === null (ожидает синхронизации с сервером), 
-  // используем Date.now(), чтобы запись оставалась наверху, а не падала вниз.
-           const fallbackTime = Date.now();
-           const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : fallbackTime);
-           const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : fallbackTime);
-           
-           return bt - at;
-         });
+        remoteExpenses.sort((a, b) => { 
+          if(a.date !== b.date) return a.date < b.date ? 1 : -1;
+          const fallbackTime = Date.now();
+          const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : fallbackTime);
+          const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : fallbackTime);
+          return bt - at;
+        });
         const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
         this.expenses = [...pendingRows, ...remoteExpenses];
         lsSet(LS_KEYS.expensesCache, this.expenses.filter(e => !e._pending));
@@ -815,11 +829,9 @@ async signIn(){
           });
         }
       }
-      // 'all' оставляем без дополнительной фильтрации по датам
       return list;
     },
     get periodExpenses(){
-      // Базовый список без фильтров по категории/типу, только по выбранному периоду
       let list = [...this.expenses];
       const today = new Date();
       const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
