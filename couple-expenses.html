@@ -223,9 +223,6 @@ async function ensureFirebase(){
         auth = window.firebase.auth();
         db = window.firebase.firestore();
         try {
-          db.settings({ experimentalAutoDetectLongPolling: true });
-        } catch(e){}
-        try {
           db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
         } catch(e){}
         firebaseReady = true;
@@ -766,7 +763,13 @@ document.addEventListener('alpine:init', () => {
           setTimeout(() => reject(new Error('NETWORK_TIMEOUT')), 4000)
         );
 
-        await Promise.race([addPromise, timeoutPromise]);
+        const docRef = await Promise.race([addPromise, timeoutPromise]);
+        
+        // Мгновенная вставка в массив (0 мс задержки)
+        const newItem = { id: docRef.id, ...basePayload };
+        if (!this.expenses.some(e => e.id === docRef.id)) {
+          this.expenses = [newItem, ...this.expenses];
+        }
         this.showAdd = false;
         this.toast('Расход добавлен');
       } catch(e) {
