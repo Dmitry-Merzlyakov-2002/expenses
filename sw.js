@@ -1,4 +1,4 @@
-const VERSION = 'v14';
+const VERSION = 'v15';
 const APP_SHELL = `ce-shell-${VERSION}`;
 const STATIC_CACHE = `ce-static-${VERSION}`;
 const RUNTIME_CACHE = `ce-runtime-${VERSION}`;
@@ -55,16 +55,6 @@ function emergencyResponse() {
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const shell = await caches.open(APP_SHELL);
-    // ИСПРАВЛЕНИЕ: раньше использовался shell.addAll(...), который работает
-    // по принципу "всё или ничего" — если хотя бы один файл из списка (например,
-    // отсутствующий шрифт или icon-512.png) отвечает не-200, ВЕСЬ шелл-кэш
-    // не записывался вообще, включая критичные firebase-*.js и alpine.min.js,
-    // а ошибка тихо проглатывалась в catch. Из-за этого установленное на
-    // главный экран приложение могло долго работать на старой/пустой версии
-    // кэша, и это было не видно в логах.
-    // Теперь каждый файл кэшируется независимо через Promise.allSettled —
-    // одна недостающая иконка/шрифт больше не блокирует кэширование остальных
-    // файлов, а результат каждого файла логируется.
     const results = await Promise.allSettled(
       SHELL_ASSETS.map(async url => {
         const res = await fetch(new Request(url, { cache: 'reload' }));
@@ -97,8 +87,6 @@ function matchesRateApi(url) {
   return url.hostname.includes('fawazahmed0') || url.hostname.includes('jsdelivr.net');
 }
 
-// Looks across ALL our caches (not just one), with ignoreSearch as a safety
-// net against query-string mismatches (e.g. ?source=pwa on Android launch).
 async function findInAnyCache(request) {
   const cacheNames = [APP_SHELL, STATIC_CACHE, RUNTIME_CACHE];
   for (const name of cacheNames) {
@@ -140,11 +128,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // NAVIGATION REQUESTS — covers both cold start from the home-screen icon
-  // AND a manual reload of the open PWA. This handler is guaranteed to
-  // resolve with a valid Response in every branch, never undefined,
-  // and never an unhandled rejection — that is what previously let the
-  // browser's native "You're offline" interstitial take over on reload.
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -159,7 +142,6 @@ self.addEventListener('fetch', event => {
           const cachedShell = await getShellHtml();
           if (cachedShell) return cachedShell;
         } catch (cacheError) {
-          // fall through to emergency response below
         }
         return emergencyResponse();
       }
@@ -167,11 +149,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ВАЖНО: для JS-файлов Firebase/Alpine/Chart используем "network-first,
-  // затем кэш" вместо чистого "cache-first". Раньше устаревший кэш этих
-  // файлов мог годами отдаваться из установленного PWA, даже после того как
-  // на сервере файлы уже исправлены — именно это вызывало "auth is null"
-  // в установленном приложении, пока в браузере всё работало нормально.
   const isCriticalScript = /\/assets\/vendor\/(firebase-|alpine|chart)/.test(url.pathname);
   if (isCriticalScript) {
     event.respondWith((async () => {
@@ -190,8 +167,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ALL OTHER SAME-ORIGIN REQUESTS — cache-first, background revalidate,
-  // with a final network attempt and a safe fallback that never rejects.
   event.respondWith((async () => {
     try {
       const cached = await findInAnyCache(req);
