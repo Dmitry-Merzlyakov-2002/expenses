@@ -8,6 +8,9 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./assets/icon-192.png">
 <link href="./assets/vendor/fonts.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Russo+One&display=swap" rel="stylesheet">
 <script defer src="./assets/vendor/chart.umd.min.js"></script>
 <script defer src="./assets/vendor/alpine.min.js"></script>
 <script defer src="./assets/vendor/firebase-app-compat.js"></script>
@@ -118,6 +121,105 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 [x-cloak]{display:none!important}
 ::selection{background:oklch(from var(--color-primary) l c h/.25)}
 input[type=date]{color-scheme:light dark}
+/* ========================================================
+   СПЕЦ-СТИЛЬ: ДЕНЬ — HELLO KITTY
+   ======================================================== */
+[data-style="special"][data-theme="light"] {
+  --color-bg: #fff0f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #fff5f8;
+  --color-surface-offset: #ffe4ec;
+  --color-surface-offset-2: #ffd2e0;
+  --color-surface-dynamic: #ffbcd2;
+  --color-divider: #ffccd9;
+  --color-border: #ffa8bf;
+  --color-text: #4a1525;
+  --color-text-muted: #8c3a52;
+  --color-text-faint: #c27088;
+  --color-text-inverse: #ffffff;
+  --color-primary: #ff3366;
+  --color-primary-hover: #e6194d;
+  --color-primary-active: #cc0033;
+  --color-primary-highlight: #ffe6ed;
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --font-display: 'Comfortaa', cursive, sans-serif;
+  --font-body: 'Comfortaa', cursive, sans-serif;
+  --shadow-sm: 0 4px 12px rgba(255, 51, 102, 0.12);
+  --shadow-md: 0 8px 24px rgba(255, 51, 102, 0.18);
+  --shadow-lg: 0 16px 36px rgba(255, 51, 102, 0.25);
+  background-color: #fff0f5;
+  background-image: radial-gradient(#ffccd9 1.5px, transparent 1.5px), radial-gradient(#ffccd9 1.5px, #fff0f5 1.5px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+}
+
+[data-style="special"][data-theme="light"] .card {
+  border: 2px solid #ffb6c8;
+  box-shadow: 0 8px 20px rgba(255, 105, 180, 0.15);
+}
+
+[data-style="special"][data-theme="light"] .fab {
+  background: linear-gradient(135deg, #ff3366, #ff6699);
+  box-shadow: 0 8px 25px rgba(255, 51, 102, 0.45);
+}
+
+/* ========================================================
+   СПЕЦ-СТИЛЬ: НОЧЬ — RAMMSTEIN (INDUSTRIAL FIRE & METAL)
+   ======================================================== */
+[data-style="special"][data-theme="dark"] {
+  --color-bg: #0d0c0b;
+  --color-surface: #171513;
+  --color-surface-2: #1c1a17;
+  --color-surface-offset: #24201c;
+  --color-surface-offset-2: #2e2823;
+  --color-surface-dynamic: #383029;
+  --color-divider: #332b24;
+  --color-border: #4d3f33;
+  --color-text: #e6e2dd;
+  --color-text-muted: #a39587;
+  --color-text-faint: #6e6357;
+  --color-text-inverse: #0d0c0b;
+  --color-primary: #ff4500;
+  --color-primary-hover: #ff2b00;
+  --color-primary-active: #cc2200;
+  --color-primary-highlight: #331206;
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --font-display: 'Russo One', sans-serif;
+  --font-body: 'Russo One', sans-serif;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 4px 16px rgba(255, 69, 0, 0.15);
+  --shadow-lg: 0 0 30px rgba(255, 69, 0, 0.35);
+  background-color: #0d0c0b;
+  background-image: 
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.25) 0px, rgba(0, 0, 0, 0.25) 2px, transparent 2px, transparent 6px),
+    radial-gradient(circle at 50% 100%, rgba(255, 69, 0, 0.18) 0%, transparent 65%);
+}
+
+[data-style="special"][data-theme="dark"] .card {
+  border: 1.5px solid #4d3f33;
+  border-left: 4px solid var(--color-primary);
+  background: linear-gradient(180deg, #191714 0%, #12100e 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
+}
+
+[data-style="special"][data-theme="dark"] .fab {
+  border-radius: 4px;
+  background: linear-gradient(135deg, #ff4500, #b31400);
+  border: 1px solid #ff7744;
+  box-shadow: 0 0 25px rgba(255, 69, 0, 0.65);
+  animation: rammstein-pulse 2s infinite ease-in-out;
+}
+
+@keyframes rammstein-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 69, 0, 0.5); }
+  50% { box-shadow: 0 0 35px rgba(255, 69, 0, 0.85); }
+}
 </style>
 </head>
 <body>
@@ -241,6 +343,7 @@ document.addEventListener('alpine:init', () => {
     theme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark':'light',
     isOnline: navigator.onLine,
     pendingQueue: [],
+    stylePack: lsGet('ce_style_pack_v1', 'classic'),
     _flushing: false,
     _pingTimer: null,
     user: null,
@@ -276,6 +379,7 @@ document.addEventListener('alpine:init', () => {
 
     init(){
       document.documentElement.setAttribute('data-theme', this.theme);
+      document.documentElement.setAttribute('data-style', this.stylePack);
       this.form.date = this.today();
       this.restoreLocalState();
       this.loading = false;
@@ -375,9 +479,16 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    toggleTheme(){ 
+     toggleTheme(){ 
       this.theme = this.theme==='dark'?'light':'dark'; 
       document.documentElement.setAttribute('data-theme', this.theme); 
+    },
+    setStylePack(pack){
+      this.stylePack = pack;
+      lsSet('ce_style_pack_v1', pack);
+      document.documentElement.setAttribute('data-style', pack);
+      this.renderChart();
+      this.toast(pack === 'special' ? 'Включен спец-стиль: Kitty / Rammstein' : 'Включен классический стиль');
     },
 
     async checkRealConnectivity(){
@@ -968,13 +1079,26 @@ document.addEventListener('alpine:init', () => {
       return n.toLocaleString('ru-RU',{maximumFractionDigits:2}) + ' ' + sym;
     },
 
-    renderChart(){
+     renderChart(){
       const canvas = document.getElementById('catChart');
       if(!canvas) return;
       if(this.chart) this.chart.destroy();
       const bd = this.categoryBreakdown;
       if(!bd.length) return;
-      const colors = ['#01696f','#da7101','#7a39bb','#d19900','#006494','#a12c7b','#437a22','#964219','#28251d'];
+
+      let colors = ['#01696f','#da7101','#7a39bb','#d19900','#006494','#a12c7b','#437a22','#964219','#28251d'];
+      
+      // Специфические цвета для диаграммы
+      if(this.stylePack === 'special') {
+        if(this.theme === 'light') {
+          // Hello Kitty: пастельные розовые, малиновые оттенки
+          colors = ['#ff3366','#ff6699','#ff99bb','#ff1493','#ba55d3','#ff69b4','#e6005c','#ff80aa','#ff4d88'];
+        } else {
+          // Rammstein: пламя, раскаленный металл, ржавчина
+          colors = ['#ff4500','#d93800','#b32400','#801900','#ff6a33','#a67c52','#665443','#ff2200','#332a24'];
+        }
+      }
+
       this.chart = new Chart(canvas, {
         type:'doughnut',
         data:{ labels: bd.map(b=>b.cat.name), datasets:[{ data: bd.map(b=>b.total), backgroundColor: colors, borderWidth:0 }] },
@@ -1224,6 +1348,21 @@ document.addEventListener('alpine:init', () => {
         <div class="sheet-handle"></div>
         <div class="stack">
           <h2 style="font-size:18px">Настройки</h2>
+          <div>
+            <span class="field-label">Стиль оформления приложения</span>
+            <div class="toggle-row" style="margin-bottom: 8px;">
+              <button class="toggle-opt" :class="stylePack==='classic'&&'active'" @click="setStylePack('classic')">
+                Классический
+              </button>
+              <button class="toggle-opt" :class="stylePack==='special'&&'active'" @click="setStylePack('special')">
+                Kitty / Rammstein
+              </button>
+            </div>
+            <p class="faint" x-show="stylePack==='special'">
+              ☀️ Днем: <b>Hello Kitty</b> (розовый, круглые формы).<br>
+              🌙 Ночью: <b>Rammstein</b> (пламя, металл, брутализм). Переключается кнопкой солнца/луны в шапке.
+            </p>
+          </div>
           <div>
             <span class="field-label">Базовая валюта отчётов</span>
             <div class="currency-row">
