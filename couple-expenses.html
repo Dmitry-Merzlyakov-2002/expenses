@@ -420,18 +420,25 @@ document.addEventListener('alpine:init', () => {
           await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
             ...cleanPayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
-        }catch(e){
-          this.pendingQueue.push(payload);
-        }
-      }
-      this.expenses = this.expenses.filter(e => !e._pending);
-      if(this.pendingQueue.length){
-        lsSet(LS_KEYS.queue, this.pendingQueue);
-      }else{
-        lsRemove(LS_KEYS.queue);
-      }
-      if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
-    },
+         }catch(e){
+               console.warn('Синхронизация записи отложена', e);
+               this.pendingQueue.push(payload);
+             }
+           }
+           
+           if(this.pendingQueue.length){
+             lsSet(LS_KEYS.queue, this.pendingQueue);
+           }else{
+             lsRemove(LS_KEYS.queue);
+           }
+         
+           // Безопасное перестроение UI: возвращаем на экран записи, которые не удалось отправить
+           const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
+           const remoteOnly = this.expenses.filter(e => !e._pending);
+           this.expenses = [...pendingRows, ...remoteOnly];
+           
+           if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
+         }
 
    // ЗАМЕНИТЬ существующую функцию signIn() на эту версию.
 // Разница: если пользователь нажал кнопку раньше, чем Firebase успел
@@ -508,10 +515,15 @@ async signIn(){
       db.collection('workspaces').doc(this.workspaceId).collection('expenses').orderBy('date','desc').onSnapshot(snap=>{
         const remoteExpenses = snap.docs.map(d=>({id:d.id, ...d.data()}));
          remoteExpenses.sort((a, b) => { if(a.date !== b.date) return a.date < b.date ? 1 : -1;
-          const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
-          const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
-          return bt - at;
-        });
+  
+  // Если createdAt === null (ожидает синхронизации с сервером), 
+  // используем Date.now(), чтобы запись оставалась наверху, а не падала вниз.
+           const fallbackTime = Date.now();
+           const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : fallbackTime);
+           const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : fallbackTime);
+           
+           return bt - at;
+         });
         const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
         this.expenses = [...pendingRows, ...remoteExpenses];
         lsSet(LS_KEYS.expensesCache, this.expenses.filter(e => !e._pending));
