@@ -8,6 +8,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./assets/icon-192.png">
 <link href="./assets/vendor/fonts.css" rel="stylesheet">
+<!-- Тематические шрифты Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@600;700&family=Russo+One&display=swap" rel="stylesheet">
@@ -17,6 +18,9 @@
 <script defer src="./assets/vendor/firebase-auth-compat.js"></script>
 <script defer src="./assets/vendor/firebase-firestore-compat.js"></script>
 <style>
+/* -------------------------------------------------------------
+   БАЗОВЫЕ ПЕРЕМЕННЫЕ И КЛАССИЧЕСКИЙ СТИЛЬ
+   ------------------------------------------------------------- */
 :root, [data-theme="light"]{
   --color-bg:#f7f6f2;--color-surface:#f9f8f5;--color-surface-2:#fbfbf9;--color-surface-offset:#f3f0ec;
   --color-surface-offset-2:#edeae5;--color-surface-dynamic:#e6e4df;--color-divider:#dcd9d5;--color-border:#d4d1ca;
@@ -37,6 +41,127 @@
   --color-orange:#fdab43;--color-gold:#e8af34;
   --shadow-sm:0 1px 2px oklch(0 0 0/.3);--shadow-md:0 4px 12px oklch(0 0 0/.4);--shadow-lg:0 12px 32px oklch(0 0 0/.5);
 }
+
+/* -------------------------------------------------------------
+   СПЕЦ-СТИЛЬ: HELLO KITTY (ДЕНЬ)
+   ------------------------------------------------------------- */
+[data-style="special"][data-theme="light"] {
+  --color-bg: #fff0f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #fff5f8;
+  --color-surface-offset: #ffe4ec;
+  --color-surface-offset-2: #ffd2e0;
+  --color-surface-dynamic: #ffbcd2;
+  --color-divider: #ffccd9;
+  --color-border: #ffa8bf;
+  --color-text: #4a1525;
+  --color-text-muted: #913a52;
+  --color-text-faint: #c97189;
+  --color-text-inverse: #ffffff;
+  --color-primary: #ff2d6f;
+  --color-primary-hover: #e61456;
+  --color-primary-active: #cc0044;
+  --color-primary-highlight: #ffe6ed;
+  --radius-sm: 0.75rem;
+  --radius-md: 1.15rem;
+  --radius-lg: 1.6rem;
+  --radius-xl: 2.2rem;
+  --font-display: 'Comfortaa', cursive, sans-serif;
+  --font-body: 'Comfortaa', cursive, sans-serif;
+  --shadow-sm: 0 4px 12px rgba(255, 45, 111, 0.15);
+  --shadow-md: 0 8px 25px rgba(255, 45, 111, 0.22);
+  --shadow-lg: 0 16px 36px rgba(255, 45, 111, 0.3);
+  background-color: #fff0f5;
+  background-image: 
+    radial-gradient(#ffccd9 2px, transparent 2px), 
+    radial-gradient(#ffb3c6 1.5px, #fff0f5 1.5px);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
+}
+[data-style="special"][data-theme="light"] .card {
+  border: 2.5px solid #ffb6c8;
+  box-shadow: 0 8px 24px rgba(255, 105, 180, 0.18);
+}
+[data-style="special"][data-theme="light"] .fab {
+  background: linear-gradient(135deg, #ff2d6f, #ff7597);
+  box-shadow: 0 8px 25px rgba(255, 45, 111, 0.5);
+}
+[data-style="special"][data-theme="light"] .topbar {
+  border-bottom: 2px solid #ffccd9;
+}
+
+/* -------------------------------------------------------------
+   СПЕЦ-СТИЛЬ: RAMMSTEIN ARENA (НОЧЬ / ПЛАМЯ И МЕТАЛЛ)
+   ------------------------------------------------------------- */
+[data-style="special"][data-theme="dark"] {
+  --color-bg: #090807;
+  --color-surface: #14110f;
+  --color-surface-2: #1c1815;
+  --color-surface-offset: #221d18;
+  --color-surface-offset-2: #2b241e;
+  --color-surface-dynamic: #382e25;
+  --color-divider: #362a20;
+  --color-border: #523e2e;
+  --color-text: #eae5de;
+  --color-text-muted: #ab9b8c;
+  --color-text-faint: #78695b;
+  --color-text-inverse: #090807;
+  --color-primary: #ff3c00;
+  --color-primary-hover: #e63200;
+  --color-primary-active: #b32400;
+  --color-primary-highlight: #331206;
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --font-display: 'Russo One', sans-serif;
+  --font-body: 'Russo One', sans-serif;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.9);
+  --shadow-md: 0 0 16px rgba(255, 60, 0, 0.35);
+  --shadow-lg: 0 0 35px rgba(255, 60, 0, 0.6);
+  background-color: #090807;
+  background-image: 
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(255, 60, 0, 0.35) 0%, rgba(180, 20, 0, 0.15) 45%, transparent 80%),
+    repeating-linear-gradient(0deg, rgba(255, 40, 0, 0.05) 0px, rgba(255, 40, 0, 0.05) 1px, transparent 1px, transparent 18px),
+    repeating-linear-gradient(90deg, rgba(255, 40, 0, 0.05) 0px, rgba(255, 40, 0, 0.05) 1px, transparent 1px, transparent 18px);
+}
+[data-style="special"][data-theme="dark"] .card {
+  border: 1.5px solid #543f2f;
+  border-left: 4px solid #ff3c00;
+  background: linear-gradient(180deg, #181411 0%, #0e0c0a 100%);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.95), 0 0 15px rgba(255, 60, 0, 0.15);
+}
+[data-style="special"][data-theme="dark"] .topbar {
+  background: rgba(14, 12, 10, 0.92);
+  border-bottom: 2px solid #ff3c00;
+  box-shadow: 0 4px 20px rgba(255, 60, 0, 0.25);
+}
+[data-style="special"][data-theme="dark"] .fab {
+  border-radius: 2px;
+  background: linear-gradient(135deg, #ff4500, #990f00);
+  border: 1.5px solid #ff7744;
+  box-shadow: 0 0 25px rgba(255, 69, 0, 0.75), inset 0 0 10px rgba(255, 230, 0, 0.5);
+  animation: rammstein-pyro 2.2s infinite ease-in-out;
+}
+[data-style="special"][data-theme="dark"] .curbtn.active,
+[data-style="special"][data-theme="dark"] .chip.active,
+[data-style="special"][data-theme="dark"] .toggle-opt.active {
+  background: linear-gradient(135deg, #ff3c00, #990f00);
+  border-color: #ff6633;
+  box-shadow: 0 0 12px rgba(255, 60, 0, 0.6);
+}
+@keyframes rammstein-pyro {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 69, 0, 0.6), 0 0 40px rgba(255, 20, 0, 0.3); transform: translateX(240px) scale(1); }
+  50% { box-shadow: 0 0 35px rgba(255, 80, 0, 0.9), 0 0 65px rgba(255, 50, 0, 0.6); transform: translateX(240px) scale(1.04); }
+}
+@media (max-width:560px){
+  [data-style="special"][data-theme="dark"] .fab { animation: rammstein-pyro-mob 2.2s infinite ease-in-out; }
+  @keyframes rammstein-pyro-mob {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 69, 0, 0.6); transform: scale(1); }
+    50% { box-shadow: 0 0 35px rgba(255, 80, 0, 0.95); transform: scale(1.05); }
+  }
+}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;height:100%}
 body{height:100dvh;font-family:var(--font-body);font-size:16px;color:var(--color-text);background:var(--color-bg);line-height:1.5;overscroll-behavior:none;touch-action:pan-x pan-y;position:relative;overflow:hidden}
@@ -89,7 +214,7 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .expense-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--color-divider)}
 .expense-row:last-child{border-bottom:none}
 .exp-icon{width:42px;height:42px;border-radius:var(--radius-md);background:var(--color-surface-offset);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-primary)}
-.exp-icon svg{width:20px;height:20px}
+.exp-icon svg{width:22px;height:22px}
 .exp-info{flex:1;min-width:0}
 .exp-cat{font-weight:600;font-size:14px}
 .exp-meta{font-size:12px;color:var(--color-text-faint)}
@@ -117,116 +242,15 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .spin-icon svg{animation:spin-rotate .8s linear infinite}
 @keyframes spin-rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes netpulse{0%,100%{opacity:1}50%{opacity:.35}}
-@keyframes rainbow-shift{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 [x-cloak]{display:none!important}
 ::selection{background:oklch(from var(--color-primary) l c h/.25)}
 input[type=date]{color-scheme:light dark}
-/* ========================================================
-   СПЕЦ-СТИЛЬ: ДЕНЬ — HELLO KITTY
-   ======================================================== */
-[data-style="special"][data-theme="light"] {
-  --color-bg: #fff0f5;
-  --color-surface: #ffffff;
-  --color-surface-2: #fff5f8;
-  --color-surface-offset: #ffe4ec;
-  --color-surface-offset-2: #ffd2e0;
-  --color-surface-dynamic: #ffbcd2;
-  --color-divider: #ffccd9;
-  --color-border: #ffa8bf;
-  --color-text: #4a1525;
-  --color-text-muted: #8c3a52;
-  --color-text-faint: #c27088;
-  --color-text-inverse: #ffffff;
-  --color-primary: #ff3366;
-  --color-primary-hover: #e6194d;
-  --color-primary-active: #cc0033;
-  --color-primary-highlight: #ffe6ed;
-  --radius-sm: 0.75rem;
-  --radius-md: 1rem;
-  --radius-lg: 1.5rem;
-  --radius-xl: 2rem;
-  --font-display: 'Comfortaa', cursive, sans-serif;
-  --font-body: 'Comfortaa', cursive, sans-serif;
-  --shadow-sm: 0 4px 12px rgba(255, 51, 102, 0.12);
-  --shadow-md: 0 8px 24px rgba(255, 51, 102, 0.18);
-  --shadow-lg: 0 16px 36px rgba(255, 51, 102, 0.25);
-  background-color: #fff0f5;
-  background-image: radial-gradient(#ffccd9 1.5px, transparent 1.5px), radial-gradient(#ffccd9 1.5px, #fff0f5 1.5px);
-  background-size: 30px 30px;
-  background-position: 0 0, 15px 15px;
-}
-
-[data-style="special"][data-theme="light"] .card {
-  border: 2px solid #ffb6c8;
-  box-shadow: 0 8px 20px rgba(255, 105, 180, 0.15);
-}
-
-[data-style="special"][data-theme="light"] .fab {
-  background: linear-gradient(135deg, #ff3366, #ff6699);
-  box-shadow: 0 8px 25px rgba(255, 51, 102, 0.45);
-}
-
-/* ========================================================
-   СПЕЦ-СТИЛЬ: НОЧЬ — RAMMSTEIN (INDUSTRIAL FIRE & METAL)
-   ======================================================== */
-[data-style="special"][data-theme="dark"] {
-  --color-bg: #0d0c0b;
-  --color-surface: #171513;
-  --color-surface-2: #1c1a17;
-  --color-surface-offset: #24201c;
-  --color-surface-offset-2: #2e2823;
-  --color-surface-dynamic: #383029;
-  --color-divider: #332b24;
-  --color-border: #4d3f33;
-  --color-text: #e6e2dd;
-  --color-text-muted: #a39587;
-  --color-text-faint: #6e6357;
-  --color-text-inverse: #0d0c0b;
-  --color-primary: #ff4500;
-  --color-primary-hover: #ff2b00;
-  --color-primary-active: #cc2200;
-  --color-primary-highlight: #331206;
-  --radius-sm: 0px;
-  --radius-md: 2px;
-  --radius-lg: 4px;
-  --radius-xl: 4px;
-  --font-display: 'Russo One', sans-serif;
-  --font-body: 'Russo One', sans-serif;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.8);
-  --shadow-md: 0 4px 16px rgba(255, 69, 0, 0.15);
-  --shadow-lg: 0 0 30px rgba(255, 69, 0, 0.35);
-  background-color: #0d0c0b;
-  background-image: 
-    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.25) 0px, rgba(0, 0, 0, 0.25) 2px, transparent 2px, transparent 6px),
-    radial-gradient(circle at 50% 100%, rgba(255, 69, 0, 0.18) 0%, transparent 65%);
-}
-
-[data-style="special"][data-theme="dark"] .card {
-  border: 1.5px solid #4d3f33;
-  border-left: 4px solid var(--color-primary);
-  background: linear-gradient(180deg, #191714 0%, #12100e 100%);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
-}
-
-[data-style="special"][data-theme="dark"] .fab {
-  border-radius: 4px;
-  background: linear-gradient(135deg, #ff4500, #b31400);
-  border: 1px solid #ff7744;
-  box-shadow: 0 0 25px rgba(255, 69, 0, 0.65);
-  animation: rammstein-pulse 2s infinite ease-in-out;
-}
-
-@keyframes rammstein-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(255, 69, 0, 0.5); }
-  50% { box-shadow: 0 0 35px rgba(255, 69, 0, 0.85); }
-}
 </style>
 </head>
 <body>
 
 <div id="crash-screen" style="display:none; position:fixed; inset:0; background:var(--color-error, #a12c7b); color:#fff; z-index:9999; padding:20px; overflow:auto;">
   <h2 style="margin-bottom:10px">Критическая ошибка</h2>
-  <p style="font-size:14px; margin-bottom:10px">Сделайте скриншот и нажмите сброс:</p>
   <pre id="crash-log" style="font-size:12px; white-space:pre-wrap; word-break:break-all; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;"></pre>
   <button onclick="localStorage.clear(); navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister())); location.reload();" style="margin-top:20px; width:100%; padding:14px; background:#fff; color:#a12c7b; border-radius:8px; font-weight:bold; border:none;">Сбросить всё и перезагрузить</button>
 </div>
@@ -255,7 +279,8 @@ const LS_KEYS = {
   lastCat: 'ce_last_catid_v1', 
   expensesCache: 'ce_expenses_cache_v1', 
   workspaceCache: 'ce_workspace_cache_v1', 
-  fxTradesCache: 'ce_fxtrades_cache_v1' 
+  fxTradesCache: 'ce_fxtrades_cache_v1',
+  stylePack: 'ce_style_pack_v2'
 };
 
 function lsGet(key, fallback){
@@ -275,6 +300,7 @@ function isStandalonePWA(){
 
 const CURRENCIES = ["RUB","RSD","GEL","USD","EUR"];
 const CUR_SYMBOL = {RUB:"₽",RSD:"дин",GEL:"₾",USD:"$",EUR:"€"};
+
 const DEFAULT_CATEGORIES = [
   {id:"visas", name:"Документы и визы", icon:"doc"},
   {id:"transport_intl", name:"Билеты и транспорт", icon:"plane"},
@@ -286,7 +312,11 @@ const DEFAULT_CATEGORIES = [
   {id:"local_transport", name:"Транспорт (местный)", icon:"car"},
   {id:"other", name:"Прочее", icon:"dots"}
 ];
-const ICONS = {
+
+/* -------------------------------------------------------------
+   ТРИ НАБОРА ИКОНОК: КЛАССИКА, HELLO KITTY, RAMMSTEIN
+   ------------------------------------------------------------- */
+const ICONS_CLASSIC = {
   doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
   plane:'<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.3.5-.1 1.1.4 1.4L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.8 5.3c.3.5.9.7 1.4.4l.5-.3c.4-.2.6-.6.5-1.1z"/>',
   home:'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
@@ -296,19 +326,58 @@ const ICONS = {
   heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/>',
   car:'<path d="M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13"/><path d="M3 13h18v5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="16.5" r="1.5"/><circle cx="16.5" cy="16.5" r="1.5"/>',
   dots:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  sun:'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+};
+
+const ICONS_KITTY = {
+  doc:'<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M3 8l9 6 9-6"/><circle cx="12" cy="15" r="2"/>', // Письмо с печатью
+  plane:'<path d="M12 2a6 6 0 0 0-6 6c0 4 6 12 6 12s6-8 6-12a6 6 0 0 0-6-6z"/><circle cx="12" cy="8" r="2"/>', // Кавайный шар
+  home:'<path d="M4 11l8-7 8 7v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9z"/><path d="M9 22v-5a3 3 0 0 1 6 0v5"/>', // Домик-замок
+  cart:'<path d="M5 11h14l-1.5 9H6.5L5 11z"/><path d="M5 11a4 4 0 0 1 7-2 4 4 0 0 1 7 2"/><circle cx="12" cy="4" r="1.5"/>', // Капкейк
+  sofa:'<path d="M4 12a4 4 0 0 1 7-2 4 4 0 0 1 7 2v6H4v-6z"/><path d="M2 17h20"/>', // Пушистое облако
+  wifi:'<path d="M12 2l2 4.5 5 .5-3.5 3.5 1 5-4.5-2.5L7.5 15.5l1-5L5 7l5-.5z"/><path d="M12 16v6"/>', // Волшебная звезда
+  heart:'<path d="M12 12c-2-3-6-4-6-1s4 3 6 1zm0 0c2-3 6-4 6-1s-4 3-6 1z"/><circle cx="12" cy="12" r="2.5"/><path d="M10 14l-2 6M14 14l2 6"/>', // Фирменный бант
+  car:'<circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 15h9l3-8h3M9 15l3-8"/>', // Ретро-скутер
+  dots:'<path d="M6 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM18 12l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM11 7l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/>', // Искорки
+  sun:'<circle cx="12" cy="12" r="5"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/><path d="M10 14a2 2 0 0 0 4 0"/>', // Милое солнце
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/><circle cx="16" cy="9" r="1"/>'
+};
+
+const ICONS_RAMMSTEIN = {
+  doc:'<path d="M12 2l8 4v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V6l8-4z"/><path d="M12 8v8M8 12h8"/>', // Стальной щит и крест
+  plane:'<path d="M12 2v20M2 13l10-3 10 3M5 18l7-2 7 2M9 5l3-2 3 2"/>', // Бомбардировщик
+  home:'<path d="M2 20h20M4 20V10l6 4V8l6 4V4l4 4v12"/><path d="M18 14h.01M6 14h.01M12 14h.01"/>', // Заводские трубы и дым
+  cart:'<path d="M12 2c-2.5 3.5-6 6-6 11a6 6 0 0 0 12 0c0-5-3.5-7.5-6-11z"/><path d="M12 13a2.5 2.5 0 0 0 0 5 2.5 2.5 0 0 0 0-5z"/>', // Адское пламя
+  sofa:'<path d="M2 8h20v4l-4 3v5H6v-5l-4-3z"/><path d="M6 8V4h12v4"/>', // Наковальня
+  wifi:'<path d="M13 2L3 14h8l-2 8 10-12h-8z"/>', // Молния высокого напряжения
+  heart:'<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="3"/>', // Биохазард / Радиация
+  car:'<rect x="2" y="14" width="20" height="6" rx="1"/><path d="M4 14l3-6h10l3 6"/><circle cx="6" cy="17" r="1.5"/><circle cx="12" cy="17" r="1.5"/><circle cx="18" cy="17" r="1.5"/>', // Гусеничный танк
+  dots:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/>', // Зубчатая шестерня
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 1L9 4h6l-3-3zm0 22l3-3H9l3 3zm11-11l-3-3v6l3-3zM1 12l3 3V9l-3 3z"/>', // Огненное солнце
+  moon:'<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 1 12 2z"/><path d="M12 7v10M7 12h10"/>' // Затмение с крестом
+};
+
+const COMMON_ICONS = {
   plus:'<path d="M12 5v14M5 12h14"/>',
   back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
-  sun:'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
-  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   feed:'<path d="M4 6h16M4 12h16M4 18h7"/>',
   stats:'<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-4"/>',
   repeat:'<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
-  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   card:'<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
   cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/>',
   refresh:'<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/>'
 };
-function icon(name,size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS.dots}</svg>`;}
+
+function getThemeIcon(name, stylePack, theme, size=20) {
+  let dict = ICONS_CLASSIC;
+  if(stylePack === 'special'){
+    dict = (theme === 'dark') ? ICONS_RAMMSTEIN : ICONS_KITTY;
+  }
+  const svgInner = dict[name] || COMMON_ICONS[name] || ICONS_CLASSIC[name] || ICONS_CLASSIC.dots;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svgInner}</svg>`;
+}
 
 async function ensureFirebase(){
   if(firebaseReady) return true;
@@ -341,16 +410,15 @@ async function ensureFirebase(){
 document.addEventListener('alpine:init', () => {
   Alpine.data('appData', () => ({
     theme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark':'light',
+    stylePack: lsGet(LS_KEYS.stylePack, 'classic'),
     isOnline: navigator.onLine,
     pendingQueue: [],
-    stylePack: lsGet('ce_style_pack_v1', 'classic'),
     _flushing: false,
     _pingTimer: null,
     user: null,
     loading: true,
     booting: true,
     firebaseEnabled: false,
-    startupStatus: 'Запуск…',
     workspaceId: null,
     workspaceLoading: false,
     joinCode: '',
@@ -460,6 +528,37 @@ document.addEventListener('alpine:init', () => {
     today(){ return new Date().toISOString().slice(0,10); },
     toast(msg){ this.toastMsg = msg; setTimeout(()=>this.toastMsg='', 3500); },
 
+    toggleTheme(){ 
+      this.theme = this.theme === 'dark' ? 'light' : 'dark'; 
+      document.documentElement.setAttribute('data-theme', this.theme); 
+      this.$nextTick(() => this.renderChart());
+    },
+
+    setStylePack(pack){
+      this.stylePack = pack;
+      lsSet(LS_KEYS.stylePack, pack);
+      document.documentElement.setAttribute('data-style', pack);
+      this.$nextTick(() => this.renderChart());
+      this.toast(pack === 'special' ? 'Включен спец-стиль: Kitty / Rammstein' : 'Включен классический стиль');
+    },
+
+    icon(name, size=20){
+      return getThemeIcon(name, this.stylePack, this.theme, size);
+    },
+
+    brandIcon(){
+      if(this.stylePack === 'special'){
+        if(this.theme === 'light'){
+          // Hello Kitty фирменный бант
+          return `<svg width="24" height="24" viewBox="0 0 24 24" fill="#ff2d6f" stroke="#ff2d6f"><path d="M12 12c-3-4-8-4-8 0s5 4 8 0zm0 0c3-4 8-4 8 0s-5 4-8 0z"/><circle cx="12" cy="12" r="2.5" fill="#fff"/></svg>`;
+        } else {
+          // Rammstein пламя арены
+          return `<svg width="24" height="24" viewBox="0 0 24 24" fill="#ff3c00" stroke="#ff3c00"><path d="M12 2c-3 5-7 8-7 13a7 7 0 0 0 14 0c0-5-4-8-7-13z"/><path d="M12 12v6M9 15h6" stroke="#fff" stroke-width="2"/></svg>`;
+        }
+      }
+      return this.icon('home', 22);
+    },
+
     async manualRefresh(){
       if(this.refreshing) return;
       this.refreshing = true;
@@ -477,18 +576,6 @@ document.addEventListener('alpine:init', () => {
       }finally{
         this.refreshing = false;
       }
-    },
-
-     toggleTheme(){ 
-      this.theme = this.theme==='dark'?'light':'dark'; 
-      document.documentElement.setAttribute('data-theme', this.theme); 
-    },
-    setStylePack(pack){
-      this.stylePack = pack;
-      lsSet('ce_style_pack_v1', pack);
-      document.documentElement.setAttribute('data-style', pack);
-      this.renderChart();
-      this.toast(pack === 'special' ? 'Включен спец-стиль: Kitty / Rammstein' : 'Включен классический стиль');
     },
 
     async checkRealConnectivity(){
@@ -541,7 +628,7 @@ document.addEventListener('alpine:init', () => {
           } catch(e) {
             console.error('Ошибка синхронизации записи:', e);
             if(e.code === 'permission-denied'){
-              this.toast('Ошибка: доступ к базе закрыт (проверьте Firebase Rules)');
+              this.toast('Ошибка: доступ к базе закрыт');
             } else {
               failed.push(payload);
             }
@@ -593,7 +680,6 @@ document.addEventListener('alpine:init', () => {
       this.expenses = []; 
     },
 
-    // Замените метод loadWorkspace() целиком:
     async loadWorkspace(){
       this.workspaceLoading = true;
       try {
@@ -603,9 +689,6 @@ document.addEventListener('alpine:init', () => {
           this.workspaceId = userDoc.data().workspaceId;
           this.attachListeners();
         } else if (this.workspaceId) {
-          // МЕХАНИЗМ САМОВОССТАНОВЛЕНИЯ:
-          // Если документ в базе был удален, но у клиента сохранен ID пространства,
-          // восстанавливаем документ в Firestore и гарантированно подключаем слушатель
           await db.collection('users').doc(this.user.uid).set({ 
             workspaceId: this.workspaceId, 
             email: this.user.email 
@@ -638,7 +721,7 @@ document.addEventListener('alpine:init', () => {
         this.toast('Пространство создано');
       } catch(e) {
         console.error('createWorkspace error:', e);
-        this.toast(`Ошибка создания [${e.code||'error'}]: ${e.message}`);
+        this.toast(`Ошибка создания: ${e.message}`);
       }
     },
 
@@ -689,7 +772,6 @@ document.addEventListener('alpine:init', () => {
         this.$nextTick(()=>this.renderChart());
       }, err => {
         console.error('Expenses snapshot error:', err);
-        if(err.code === 'permission-denied') this.toast('Доступ к расходам запрещен правилами Firebase');
       });
     },
 
@@ -777,7 +859,7 @@ document.addEventListener('alpine:init', () => {
       if(this.fxSaving) return;
       const fromAmount = parseFloat(this.newFx.fromAmount);
       const toAmount = parseFloat(this.newFx.toAmount);
-      if(!fromAmount || !toAmount || isNaN(fromAmount) || isNaN(toAmount)){ this.toast('Укажите корректные суммы'); return; }
+      if(!fromAmount || !toAmount || isNaN(fromAmount) || isNaN(toAmount)){ this.toast('Укажите суммы'); return; }
       if(this.newFx.fromCurrency === this.newFx.toCurrency){ this.toast('Валюты должны отличаться'); return; }
       
       this.fxSaving = true;
@@ -799,8 +881,7 @@ document.addEventListener('alpine:init', () => {
         this.showFxForm = false;
         this.toast('Курс обмена сохранён');
       }catch(e){
-        console.error('FX save error:', e);
-        this.toast(`Ошибка сохранения: ${e.message}`);
+        this.toast(`Ошибка: ${e.message}`);
       }finally{
         this.fxSaving = false;
       }
@@ -844,11 +925,11 @@ document.addEventListener('alpine:init', () => {
         return; 
       }
       if(!this.workspaceId){
-        this.toast('Ошибка: нет связи с пространством');
+        this.toast('Ошибка: нет пространства');
         return;
       }
       if(!this.user || !this.user.uid){
-        this.toast('Ошибка: авторизуйтесь заново');
+        this.toast('Ошибка: авторизуйтесь');
         return;
       }
 
@@ -889,11 +970,11 @@ document.addEventListener('alpine:init', () => {
 
         const docRef = await Promise.race([addPromise, timeoutPromise]);
         
-        // Мгновенная вставка в массив (0 мс задержки)
         const newItem = { id: docRef.id, ...basePayload };
         if (!this.expenses.some(e => e.id === docRef.id)) {
           this.expenses = [newItem, ...this.expenses];
         }
+
         this.showAdd = false;
         this.toast('Расход добавлен');
       } catch(e) {
@@ -912,8 +993,7 @@ document.addEventListener('alpine:init', () => {
           this.showAdd = false;
           this.toast('Связь прервалась — сохранено локально');
         } else {
-          const code = e.code || 'error';
-          this.toast(`Ошибка Firestore [${code}]: ${e.message}`);
+          this.toast(`Ошибка: ${e.message}`);
         }
       }
     },
@@ -931,7 +1011,7 @@ document.addEventListener('alpine:init', () => {
         await db.collection('workspaces').doc(this.workspaceId).collection('expenses').doc(id).delete();
         this.toast('Удалено');
       }catch(e){
-        this.toast(`Ошибка удаления: ${e.message}`);
+        this.toast(`Ошибка: ${e.message}`);
       }
     },
 
@@ -967,32 +1047,23 @@ document.addEventListener('alpine:init', () => {
       if(this.filterCat!=='all') list = list.filter(e=>e.catId===this.filterCat);
       if(this.filterType!=='all') list = list.filter(e=>e.type===this.filterType);
 
-      const today = new Date();
-      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
+      const todayStr = this.today();
 
       if(this.filterPeriod==='day'){
-        list = list.filter(e=>{
-          const d = new Date(e.date);
-          return d >= startOfToday && d < endOfToday;
-        });
+        list = list.filter(e => e.date === todayStr);
       } else if(this.filterPeriod==='week'){
-        const cutoff = new Date(startOfToday);
-        cutoff.setDate(cutoff.getDate()-7);
-        list = list.filter(e=> new Date(e.date) >= cutoff);
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        const cutoff = d.toISOString().slice(0, 10);
+        list = list.filter(e => e.date >= cutoff);
       } else if(this.filterPeriod==='month'){
-        const cutoff = new Date(startOfToday);
-        cutoff.setDate(cutoff.getDate()-30);
-        list = list.filter(e=> new Date(e.date) >= cutoff);
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        const cutoff = d.toISOString().slice(0, 10);
+        list = list.filter(e => e.date >= cutoff);
       } else if(this.filterPeriod==='range'){
         if(this.customStartDate && this.customEndDate){
-          const start = new Date(this.customStartDate);
-          const end = new Date(this.customEndDate);
-          const endPlus = new Date(end.getFullYear(), end.getMonth(), end.getDate()+1);
-          list = list.filter(e=>{
-            const d = new Date(e.date);
-            return d >= start && d < endPlus;
-          });
+          list = list.filter(e => e.date >= this.customStartDate && e.date <= this.customEndDate);
         }
       }
       return list;
@@ -1000,32 +1071,23 @@ document.addEventListener('alpine:init', () => {
 
     get periodExpenses(){
       let list = [...this.expenses];
-      const today = new Date();
-      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()+1);
+      const todayStr = this.today();
 
       if(this.filterPeriod==='day'){
-        list = list.filter(e=>{
-          const d = new Date(e.date);
-          return d >= startOfToday && d < endOfToday;
-        });
+        list = list.filter(e => e.date === todayStr);
       } else if(this.filterPeriod==='week'){
-        const cutoff = new Date(startOfToday);
-        cutoff.setDate(cutoff.getDate()-7);
-        list = list.filter(e=> new Date(e.date) >= cutoff);
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        const cutoff = d.toISOString().slice(0, 10);
+        list = list.filter(e => e.date >= cutoff);
       } else if(this.filterPeriod==='month'){
-        const cutoff = new Date(startOfToday);
-        cutoff.setDate(cutoff.getDate()-30);
-        list = list.filter(e=> new Date(e.date) >= cutoff);
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        const cutoff = d.toISOString().slice(0, 10);
+        list = list.filter(e => e.date >= cutoff);
       } else if(this.filterPeriod==='range'){
         if(this.customStartDate && this.customEndDate){
-          const start = new Date(this.customStartDate);
-          const end = new Date(this.customEndDate);
-          const endPlus = new Date(end.getFullYear(), end.getMonth(), end.getDate()+1);
-          list = list.filter(e=>{
-            const d = new Date(e.date);
-            return d >= start && d < endPlus;
-          });
+          list = list.filter(e => e.date >= this.customStartDate && e.date <= this.customEndDate);
         }
       }
       return list;
@@ -1079,7 +1141,7 @@ document.addEventListener('alpine:init', () => {
       return n.toLocaleString('ru-RU',{maximumFractionDigits:2}) + ' ' + sym;
     },
 
-     renderChart(){
+    renderChart(){
       const canvas = document.getElementById('catChart');
       if(!canvas) return;
       if(this.chart) this.chart.destroy();
@@ -1088,14 +1150,11 @@ document.addEventListener('alpine:init', () => {
 
       let colors = ['#01696f','#da7101','#7a39bb','#d19900','#006494','#a12c7b','#437a22','#964219','#28251d'];
       
-      // Специфические цвета для диаграммы
-      if(this.stylePack === 'special') {
-        if(this.theme === 'light') {
-          // Hello Kitty: пастельные розовые, малиновые оттенки
-          colors = ['#ff3366','#ff6699','#ff99bb','#ff1493','#ba55d3','#ff69b4','#e6005c','#ff80aa','#ff4d88'];
+      if(this.stylePack === 'special'){
+        if(this.theme === 'light'){
+          colors = ['#ff2d6f','#ff6699','#ff99bb','#ff1493','#ba55d3','#ff69b4','#e6005c','#ff80aa','#ff4d88'];
         } else {
-          // Rammstein: пламя, раскаленный металл, ржавчина
-          colors = ['#ff4500','#d93800','#b32400','#801900','#ff6a33','#a67c52','#665443','#ff2200','#332a24'];
+          colors = ['#ff3c00','#d93000','#b32000','#801600','#ff6633','#a67c52','#665443','#ff1a00','#332a24'];
         }
       }
 
@@ -1109,14 +1168,14 @@ document.addEventListener('alpine:init', () => {
 });
 </script>
 
-<div class="app" x-data="appData" :data-theme="theme" >
+<div class="app" x-data="appData" :data-theme="theme" :data-style="stylePack">
 
   <div x-show="loading" class="login-screen">
     <div class="skel" style="width:64px;height:64px;border-radius:50%"></div>
   </div>
 
   <div x-show="!loading && !user" x-cloak class="login-screen">
-    <div style="width:72px;height:72px;border-radius:20px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff" x-html="icon('home',36)"></div>
+    <div style="width:72px;height:72px;border-radius:20px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff" x-html="brandIcon()"></div>
     <div>
       <h1 style="font-size:26px;margin-bottom:6px">Расходы на переезд</h1>
       <p class="muted">Общий трекер трат для пары. Войдите через Google, чтобы синхронизировать данные с партнёром.</p>
@@ -1140,7 +1199,7 @@ document.addEventListener('alpine:init', () => {
   <div style="display:flex;flex-direction:column;flex:1;min-height:0;width:100%">
     <header class="topbar">
       <div class="brand">
-        <span x-html="icon('home',22)" style="color:var(--color-primary)"></span>
+        <span x-html="brandIcon()" style="color:var(--color-primary)"></span>
         <span x-text="tab==='feed'?'Лента':tab==='stats'?'Статистика':tab==='recurring'?'Регулярные':'Настройки'"></span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -1186,7 +1245,7 @@ document.addEventListener('alpine:init', () => {
           </template>
           <template x-for="exp in filteredExpenses" :key="exp.id">
             <div class="expense-row">
-              <div class="exp-icon" x-html="icon(catInfo(exp.catId).icon,20)"></div>
+              <div class="exp-icon" x-html="icon(catInfo(exp.catId).icon, 22)"></div>
               <div class="exp-info">
                 <div class="exp-cat" x-text="catInfo(exp.catId).name"></div>
                 <div class="exp-meta">
@@ -1233,7 +1292,7 @@ document.addEventListener('alpine:init', () => {
         <div class="card stack">
           <template x-for="b in categoryBreakdown" :key="b.catId">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="display:flex;align-items:center;gap:8px"><span x-html="icon(b.cat.icon,16)" style="color:var(--color-primary)"></span><span style="font-size:14px" x-text="b.cat.name"></span></div>
+              <div style="display:flex;align-items:center;gap:8px"><span x-html="icon(b.cat.icon,18)" style="color:var(--color-primary)"></span><span style="font-size:14px" x-text="b.cat.name"></span></div>
               <span style="font-weight:600;font-size:14px" x-text="fmt(b.total, baseCurrency)"></span>
             </div>
           </template>
@@ -1251,7 +1310,7 @@ document.addEventListener('alpine:init', () => {
           </template>
           <template x-for="exp in recurringList" :key="exp.id">
             <div class="expense-row">
-              <div class="exp-icon" x-html="icon(catInfo(exp.catId).icon,20)"></div>
+              <div class="exp-icon" x-html="icon(catInfo(exp.catId).icon, 22)"></div>
               <div class="exp-info">
                 <div class="exp-cat" x-text="catInfo(exp.catId).name"></div>
                 <div class="exp-meta" x-text="'Последний раз: '+exp.date"></div>
@@ -1296,12 +1355,12 @@ document.addEventListener('alpine:init', () => {
             <div class="cat-grid">
               <template x-for="cat in categories" :key="cat.id">
                 <button class="cat-tile" :class="form.catId===cat.id&&'active'" @click="form.catId=cat.id; lsSet(LS_KEYS.lastCat, cat.id)">
-                  <span x-html="icon(cat.icon,22)"></span>
+                  <span x-html="icon(cat.icon, 26)"></span>
                   <span x-text="cat.name"></span>
                 </button>
               </template>
               <button class="cat-tile" @click="showNewCat=true">
-                <span x-html="icon('plus',22)"></span>
+                <span x-html="icon('plus', 26)"></span>
                 <span>Новая</span>
               </button>
             </div>
@@ -1343,11 +1402,13 @@ document.addEventListener('alpine:init', () => {
       </div>
     </div>
 
+    <!-- ОКНО НАСТРОЕК С ПЕРЕКЛЮЧАТЕЛЕМ СТИЛЕЙ -->
     <div class="sheet-overlay" x-show="showSettings" x-cloak x-transition.opacity @click.self="showSettings=false">
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="stack">
           <h2 style="font-size:18px">Настройки</h2>
+          
           <div>
             <span class="field-label">Стиль оформления приложения</span>
             <div class="toggle-row" style="margin-bottom: 8px;">
@@ -1358,11 +1419,13 @@ document.addEventListener('alpine:init', () => {
                 Kitty / Rammstein
               </button>
             </div>
-            <p class="faint" x-show="stylePack==='special'">
-              ☀️ Днем: <b>Hello Kitty</b> (розовый, круглые формы).<br>
-              🌙 Ночью: <b>Rammstein</b> (пламя, металл, брутализм). Переключается кнопкой солнца/луны в шапке.
+            <p class="faint" x-show="stylePack==='special'" style="line-height:1.4">
+              ☀️ <b>Hello Kitty:</b> розовый глянец, бантики, милые иконки.<br>
+              🌙 <b>Rammstein:</b> стадионное пламя, софиты, брутальный металл.<br>
+              <i>Переключается кнопкой солнца / луны вверху экрана.</i>
             </p>
           </div>
+
           <div>
             <span class="field-label">Базовая валюта отчётов</span>
             <div class="currency-row">
