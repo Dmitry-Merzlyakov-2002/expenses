@@ -14,10 +14,6 @@
 <script defer src="./assets/vendor/firebase-auth-compat.js"></script>
 <script defer src="./assets/vendor/firebase-firestore-compat.js"></script>
 <style>
-/* Art direction: Family relocation budget tracker → calm, trustworthy, fast-input utility
-   Palette: warm neutral surfaces + single teal accent (Nexus) — teal signals "money under control" without alarm
-   Typography: Satoshi (display/headings) + Work Sans (body/UI) — clean geometric pairing, legible at small UI sizes
-   Density: dense/functional — this is a daily-use utility, not editorial */
 :root, [data-theme="light"]{
   --color-bg:#f7f6f2;--color-surface:#f9f8f5;--color-surface-2:#fbfbf9;--color-surface-offset:#f3f0ec;
   --color-surface-offset-2:#edeae5;--color-surface-dynamic:#e6e4df;--color-divider:#dcd9d5;--color-border:#d4d1ca;
@@ -39,9 +35,8 @@
   --shadow-sm:0 1px 2px oklch(0 0 0/.3);--shadow-md:0 4px 12px oklch(0 0 0/.4);--shadow-lg:0 12px 32px oklch(0 0 0/.5);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
-html{overscroll-behavior-y:none;height:100%}
-body{height:100dvh;font-family:var(--font-body);font-size:16px;color:var(--color-text);background:var(--color-bg);line-height:1.5;overscroll-behavior-y:none;overscroll-behavior-x:none;touch-action:pan-x pan-y;position:relative;overflow:hidden}
+html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none;height:100%}
+body{height:100dvh;font-family:var(--font-body);font-size:16px;color:var(--color-text);background:var(--color-bg);line-height:1.5;overscroll-behavior:none;touch-action:pan-x pan-y;position:relative;overflow:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none}
 h1,h2,h3{font-family:var(--font-display);line-height:1.15}
@@ -74,8 +69,7 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .curbtn{padding:8px 14px;border-radius:var(--radius-full);border:1px solid var(--color-border);font-weight:600;font-size:14px;color:var(--color-text-muted);transition:all .15s}
 .curbtn.active{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
 .cat-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:10px}
-.cat-tile{width:100%;box-sizing:border-box}
-.cat-tile{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border-radius:var(--radius-lg);border:1.5px solid var(--color-border);background:var(--color-surface);min-height:80px;justify-content:center;transition:all .15s}
+.cat-tile{width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 4px;border-radius:var(--radius-lg);border:1.5px solid var(--color-border);background:var(--color-surface);min-height:80px;justify-content:center;transition:all .15s}
 .cat-tile.active{border-color:var(--color-primary);background:var(--color-primary-highlight)}
 .cat-tile svg{width:24px;height:24px;color:var(--color-text-muted)}
 .cat-tile.active svg{color:var(--color-primary)}
@@ -103,8 +97,7 @@ main{flex:1;min-height:0;padding:12px 16px 100px;overflow-y:auto;overscroll-beha
 .filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .filter-row::-webkit-scrollbar{display:none}
 .kpi-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px}
-.kpi{width:100%;box-sizing:border-box}
-.kpi{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:14px}
+.kpi{width:100%;box-sizing:border-box;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:14px}
 .kpi .v{font-family:var(--font-display);font-weight:800;font-size:22px}
 .section-title{font-weight:700;font-size:15px;margin-bottom:2px}
 .login-screen{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;gap:20px}
@@ -129,12 +122,11 @@ input[type=date]{color-scheme:light dark}
 </head>
 <body>
 
-<!-- Глобальный перехватчик критических ошибок -->
 <div id="crash-screen" style="display:none; position:fixed; inset:0; background:var(--color-error, #a12c7b); color:#fff; z-index:9999; padding:20px; overflow:auto;">
   <h2 style="margin-bottom:10px">Критическая ошибка</h2>
-  <p style="font-size:14px; margin-bottom:10px">Сделайте скриншот и нажмите кнопку сброса:</p>
+  <p style="font-size:14px; margin-bottom:10px">Сделайте скриншот и нажмите сброс:</p>
   <pre id="crash-log" style="font-size:12px; white-space:pre-wrap; word-break:break-all; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;"></pre>
-  <button onclick="localStorage.clear(); navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister())); location.reload();" style="margin-top:20px; width:100%; padding:14px; background:#fff; color:#a12c7b; border-radius:8px; font-weight:bold; border:none;">Сбросить PWA и перезагрузить</button>
+  <button onclick="localStorage.clear(); navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister())); location.reload();" style="margin-top:20px; width:100%; padding:14px; background:#fff; color:#a12c7b; border-radius:8px; font-weight:bold; border:none;">Сбросить всё и перезагрузить</button>
 </div>
 <script>
   window.onerror = function(msg, url, lineNo, columnNo, error) {
@@ -142,10 +134,8 @@ input[type=date]{color-scheme:light dark}
     document.getElementById('crash-log').innerText = msg + '\n' + url + ':' + lineNo + '\n' + (error && error.stack ? error.stack : '');
   };
 </script>
-<!-- Конец блока перехватчика -->
 
 <script>
-/* ===== Firebase config — replace with your project's config before deploying ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyBvPEkGZW5Ivfi5zZCxmh0laeYLVRhcGAY",
   authDomain: "expense-7f67f.firebaseapp.com",
@@ -156,10 +146,16 @@ const firebaseConfig = {
 };
 let auth = null;
 let db = null;
-let persistenceReady = Promise.resolve();
 let firebaseReady = false;
 
-const LS_KEYS = { queue: 'ce_pending_queue_v1', lastCat: 'ce_last_catid_v1', expensesCache: 'ce_expenses_cache_v1', workspaceCache: 'ce_workspace_cache_v1', fxTradesCache: 'ce_fxtrades_cache_v1' };
+const LS_KEYS = { 
+  queue: 'ce_pending_queue_v3', 
+  lastCat: 'ce_last_catid_v1', 
+  expensesCache: 'ce_expenses_cache_v1', 
+  workspaceCache: 'ce_workspace_cache_v1', 
+  fxTradesCache: 'ce_fxtrades_cache_v1' 
+};
+
 function lsGet(key, fallback){
   try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
   catch(e){ return fallback; }
@@ -212,52 +208,37 @@ const ICONS = {
 };
 function icon(name,size=20){return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS.dots}</svg>`;}
 
-function hasFirebaseSdk(){
-  return typeof window.firebase !== 'undefined' && typeof window.firebase.initializeApp === 'function';
-}
-function hasValidFirebaseConfig(){
-  return firebaseConfig.apiKey && firebaseConfig.apiKey !== 'YOUR_API_KEY' && firebaseConfig.projectId && firebaseConfig.projectId !== 'YOUR_PROJECT';
-}
-
 async function ensureFirebase(){
   if(firebaseReady) return true;
-
-  const maxAttempts = 40;
-  const delayMs = 100;
-
+  const maxAttempts = 30;
   for(let attempt = 0; attempt < maxAttempts; attempt++){
-    const sdkOk =
-      typeof window.firebase !== 'undefined' &&
-      typeof window.firebase.initializeApp === 'function' &&
-      typeof window.firebase.auth === 'function' &&
-      typeof window.firebase.firestore === 'function';
+    const sdkOk = typeof window.firebase !== 'undefined' &&
+                  typeof window.firebase.initializeApp === 'function' &&
+                  typeof window.firebase.auth === 'function' &&
+                  typeof window.firebase.firestore === 'function';
 
-    if(sdkOk && hasValidFirebaseConfig()){
+    if(sdkOk){
       try{
         if(!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
         auth = window.firebase.auth();
         db = window.firebase.firestore();
-        db.settings({
-          cache: {
-            kind: 'persistent',
-            tabManager: { kind: 'multiple' }
-          },
-          experimentalAutoDetectLongPolling: true,
-          merge: true
-        });
+        try {
+          db.settings({ experimentalAutoDetectLongPolling: true });
+        } catch(e){}
+        try {
+          db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+        } catch(e){}
         firebaseReady = true;
         return true;
       }catch(e){
-        console.warn('Firebase bootstrap failed on attempt', attempt, e);
+        console.warn('Firebase bootstrap error:', e);
       }
     }
-
-    await new Promise(r => setTimeout(r, delayMs));
+    await new Promise(r => setTimeout(r, 100));
   }
-
-  console.error('Firebase SDK не инициализировался за отведённое время');
   return false;
 }
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('appData', () => ({
     theme: matchMedia('(prefers-color-scheme:dark)').matches ? 'dark':'light',
@@ -269,7 +250,7 @@ document.addEventListener('alpine:init', () => {
     loading: true,
     booting: true,
     firebaseEnabled: false,
-    startupStatus: 'Запуск оффлайн-оболочки…',
+    startupStatus: 'Запуск…',
     workspaceId: null,
     workspaceLoading: false,
     joinCode: '',
@@ -286,7 +267,6 @@ document.addEventListener('alpine:init', () => {
     customStartDate: '',
     customEndDate: '',
     form: { amount:'', currency:'EUR', catId:'housing', type:'one', date:'', comment:'', method:'card' },
-    _restoringPendingQueue: false,
     newCatName: '',
     showNewCat: false,
     chart: null,
@@ -303,10 +283,9 @@ document.addEventListener('alpine:init', () => {
       this.restoreLocalState();
       this.loading = false;
       this.booting = false;
-      this.startupStatus = '';
-      this.isOnline = false;
       this.$nextTick(() => this.renderChart());
-      setTimeout(() => this.checkRealConnectivity(), 0);
+      
+      this.checkRealConnectivity();
       this._pingTimer = setInterval(() => this.checkRealConnectivity(), 15000);
       
       window.addEventListener('online', () => {
@@ -325,15 +304,17 @@ document.addEventListener('alpine:init', () => {
         this.isOnline = false;
         this.toast('Нет подключения к интернету');
       });
+
       setTimeout(() => this.startFirebaseFlow(), 0);
     },
+
     restoreLocalState(){
-      this._restoringPendingQueue = true;
       const savedQueue = lsGet(LS_KEYS.queue, []);
       const savedCatId = lsGet(LS_KEYS.lastCat, null);
       const cachedExpenses = lsGet(LS_KEYS.expensesCache, []);
       const cachedWorkspace = lsGet(LS_KEYS.workspaceCache, null);
       const cachedFx = lsGet(LS_KEYS.fxTradesCache, { fxTrades: [], updatedAt: null });
+
       if(Array.isArray(cachedFx.fxTrades) && cachedFx.fxTrades.length){
         this.fxTrades = cachedFx.fxTrades;
         this.fxTradesUpdatedAt = cachedFx.updatedAt || null;
@@ -344,6 +325,7 @@ document.addEventListener('alpine:init', () => {
         this.baseCurrency = cachedWorkspace.baseCurrency || this.baseCurrency;
         if(Array.isArray(cachedWorkspace.categories) && cachedWorkspace.categories.length) this.categories = cachedWorkspace.categories;
       }
+      
       this.expenses = Array.isArray(cachedExpenses) ? cachedExpenses : [];
       if(savedQueue.length){
         this.pendingQueue = savedQueue;
@@ -351,69 +333,66 @@ document.addEventListener('alpine:init', () => {
         const existingIds = new Set(this.expenses.map(e => e.id));
         pendingRows.forEach(row => { if(!existingIds.has(row.id)) this.expenses.unshift(row); });
       }
-      this._restoringPendingQueue = false;
     },
+
     async startFirebaseFlow(){
-      this.startupStatus = 'Подключаем локальную базу…';
       const ready = await ensureFirebase();
       this.firebaseEnabled = ready;
       if(!ready){
-        this.startupStatus = this.isOnline ? 'Firebase недоступен' : 'Оффлайн: показаны локальные данные';
+        this.toast('Не удалось инициализировать Firebase SDK');
         return;
       }
-      this.startupStatus = this.isOnline ? 'Синхронизация…' : 'Оффлайн: показаны локальные данные';
       try{
         await auth.getRedirectResult();
       }catch(e){
-        console.error('getRedirectResult failed', e);
-        this.toast(e.message || 'Ошибка при завершении входа');
+        console.error('Redirect result error:', e);
       }
       auth.onAuthStateChanged(async (u) => {
         this.user = u;
         this.loading = false;
-        if(u){ await this.loadWorkspace(); }
+        if(u){ 
+          await this.loadWorkspace(); 
+        }
       });
     },
+
     today(){ return new Date().toISOString().slice(0,10); },
-    toast(msg){ this.toastMsg = msg; setTimeout(()=>this.toastMsg='', 2200); },
+    toast(msg){ this.toastMsg = msg; setTimeout(()=>this.toastMsg='', 3500); },
+
     async manualRefresh(){
       if(this.refreshing) return;
       this.refreshing = true;
-      const withTimeout = (promise, ms) => Promise.race([
-        promise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
-      ]);
       try{
-        const online = await withTimeout(this.checkRealConnectivity(), 3000);
+        const online = await this.checkRealConnectivity();
         if(online){
-          await withTimeout(this.flushPendingQueue(), 5000).catch(()=>{});
-          if(this.workspaceId) await withTimeout(this.loadWorkspace(), 5000).catch(()=>{});
-          if(navigator.serviceWorker && navigator.serviceWorker.controller){
-            navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
-          }
+          await this.flushPendingQueue();
+          if(this.workspaceId) await this.loadWorkspace();
           this.toast('Обновлено');
         }else{
           this.toast('Нет подключения — показаны локальные данные');
         }
       }catch(e){
-        this.toast('Не удалось обновить');
+        this.toast('Ошибка обновления');
       }finally{
         this.refreshing = false;
       }
     },
-    toggleTheme(){ this.theme = this.theme==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme', this.theme); },
+
+    toggleTheme(){ 
+      this.theme = this.theme==='dark'?'light':'dark'; 
+      document.documentElement.setAttribute('data-theme', this.theme); 
+    },
 
     async checkRealConnectivity(){
       const wasOnline = this.isOnline;
       if(!navigator.onLine){
         this.isOnline = false;
-        if(wasOnline) this.toast('Нет подключения к интернету');
         return false;
       }
       let online = false;
       try{
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1800);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
         const res = await fetch(`./manifest.json?_=${Date.now()}`, { cache:'reload', signal: controller.signal });
         clearTimeout(timeoutId);
         online = !!res;
@@ -424,45 +403,55 @@ document.addEventListener('alpine:init', () => {
       if(!wasOnline && this.isOnline){
         this.toast('Соединение восстановлено');
         this.flushPendingQueue();
-      }else if(wasOnline && !this.isOnline){
-        this.toast('Нет подключения к интернету');
       }
       return this.isOnline;
     },
-    
+
     async flushPendingQueue(){
       if(this._flushing) return;
-      if(!this.pendingQueue.length || !this.workspaceId) return;
+      if(!this.pendingQueue.length || !this.workspaceId || !db) return;
       
       this._flushing = true;
-      
       try {
         const toSync = [...this.pendingQueue];
-        this.pendingQueue = [];
+        const failed = [];
         
         for(const payload of toSync){
-          const { _localId, createdAtLocal, ...cleanPayload } = payload;
+          const { _localId, createdAtLocal, _pending, ...cleanPayload } = payload;
+          
+          Object.keys(cleanPayload).forEach(key => {
+            if (cleanPayload[key] === undefined) delete cleanPayload[key];
+          });
+          
           try {
-            await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
-              ...cleanPayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            const addPromise = db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
+              ...cleanPayload, 
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('NETWORK_TIMEOUT')), 4000));
+            await Promise.race([addPromise, timeoutPromise]);
           } catch(e) {
-            console.warn('Синхронизация записи отложена', e);
-            this.pendingQueue.push(payload);
+            console.error('Ошибка синхронизации записи:', e);
+            if(e.code === 'permission-denied'){
+              this.toast('Ошибка: доступ к базе закрыт (проверьте Firebase Rules)');
+            } else {
+              failed.push(payload);
+            }
           }
         }
         
+        this.pendingQueue = failed;
         if(this.pendingQueue.length){
           lsSet(LS_KEYS.queue, this.pendingQueue);
-        }else{
+        } else {
           lsRemove(LS_KEYS.queue);
         }
       
-        const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
         const remoteOnly = this.expenses.filter(e => !e._pending);
+        const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
         this.expenses = [...pendingRows, ...remoteOnly];
         
-        if(toSync.length && !this.pendingQueue.length) this.toast('Синхронизировано');
+        if(toSync.length && !failed.length) this.toast('Все расходы синхронизированы');
       } finally {
         this._flushing = false;
       }
@@ -470,10 +459,10 @@ document.addEventListener('alpine:init', () => {
 
     async signIn(){
       if(!auth){
-        this.toast('Подключаемся к серверу…');
+        this.toast('Подключение к Firebase...');
         const ready = await ensureFirebase();
         if(!ready || !auth){
-          this.toast('Не удалось подключиться. Проверьте интернет и попробуйте ещё раз');
+          this.toast('Сервис авторизации недоступен');
           return;
         }
       }
@@ -489,38 +478,69 @@ document.addEventListener('alpine:init', () => {
         this.toast(e.message || 'Ошибка входа');
       }
     },
-    async signOut(){ await auth.signOut(); this.workspaceId=null; this.expenses=[]; },
+
+    async signOut(){ 
+      if(auth) await auth.signOut(); 
+      this.workspaceId = null; 
+      this.expenses = []; 
+    },
 
     async loadWorkspace(){
       this.workspaceLoading = true;
-      const userDoc = await db.collection('users').doc(this.user.uid).get();
-      if(userDoc.exists && userDoc.data().workspaceId){
-        this.workspaceId = userDoc.data().workspaceId;
-        this.attachListeners();
+      try {
+        const userDoc = await db.collection('users').doc(this.user.uid).get();
+        if(userDoc.exists && userDoc.data().workspaceId){
+          this.workspaceId = userDoc.data().workspaceId;
+          this.attachListeners();
+        }
+      } catch(e){
+        console.error('loadWorkspace error:', e);
+        if(e.code === 'permission-denied') this.toast('Ошибка прав доступа к пользователю');
+      } finally {
+        this.workspaceLoading = false;
       }
-      this.workspaceLoading = false;
     },
+
     async createWorkspace(){
-      const wsRef = db.collection('workspaces').doc();
-      await wsRef.set({ createdBy: this.user.uid, baseCurrency: 'EUR', categories: DEFAULT_CATEGORIES, members:[this.user.uid], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      await db.collection('users').doc(this.user.uid).set({ workspaceId: wsRef.id, email:this.user.email }, {merge:true});
-      this.workspaceId = wsRef.id;
-      this.attachListeners();
-      this.toast('Рабочее пространство создано. Код: '+wsRef.id);
+      try {
+        const wsRef = db.collection('workspaces').doc();
+        await wsRef.set({ 
+          createdBy: this.user.uid, 
+          baseCurrency: 'EUR', 
+          categories: DEFAULT_CATEGORIES, 
+          members: [this.user.uid], 
+          createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+        });
+        await db.collection('users').doc(this.user.uid).set({ workspaceId: wsRef.id, email: this.user.email }, {merge:true});
+        this.workspaceId = wsRef.id;
+        this.attachListeners();
+        this.toast('Пространство создано');
+      } catch(e) {
+        console.error('createWorkspace error:', e);
+        this.toast(`Ошибка создания [${e.code||'error'}]: ${e.message}`);
+      }
     },
+
     async joinWorkspace(){
       if(!this.joinCode.trim()) return;
-      const wsRef = db.collection('workspaces').doc(this.joinCode.trim());
-      const snap = await wsRef.get();
-      if(!snap.exists){ this.toast('Пространство не найдено'); return; }
-      await wsRef.set({ members: firebase.firestore.FieldValue.arrayUnion(this.user.uid) }, {merge:true});
-      await db.collection('users').doc(this.user.uid).set({ workspaceId: wsRef.id, email:this.user.email }, {merge:true});
-      this.workspaceId = wsRef.id;
-      this.attachListeners();
-      this.toast('Подключено к пространству');
+      try {
+        const wsRef = db.collection('workspaces').doc(this.joinCode.trim());
+        const snap = await wsRef.get();
+        if(!snap.exists){ this.toast('Пространство не найдено'); return; }
+        await wsRef.set({ members: firebase.firestore.FieldValue.arrayUnion(this.user.uid) }, {merge:true});
+        await db.collection('users').doc(this.user.uid).set({ workspaceId: wsRef.id, email: this.user.email }, {merge:true});
+        this.workspaceId = wsRef.id;
+        this.attachListeners();
+        this.toast('Подключено');
+      } catch(e) {
+        console.error('joinWorkspace error:', e);
+        this.toast(`Ошибка подключения: ${e.message}`);
+      }
     },
+
     attachListeners(){
       this.loadFxTrades();
+      
       db.collection('workspaces').doc(this.workspaceId).onSnapshot(doc=>{
         if(!doc.exists) return;
         const d = doc.data();
@@ -528,25 +548,33 @@ document.addEventListener('alpine:init', () => {
         if(d.categories && d.categories.length) this.categories = d.categories;
         lsSet(LS_KEYS.workspaceCache, { workspaceId:this.workspaceId, baseCurrency:this.baseCurrency, categories:this.categories });
         this.recalcAll();
-      });
+      }, err => console.error('WS snapshot error:', err));
+
       db.collection('workspaces').doc(this.workspaceId).collection('expenses').orderBy('date','desc').onSnapshot(snap=>{
         const remoteExpenses = snap.docs.map(d=>({id:d.id, ...d.data()}));
-        remoteExpenses.sort((a, b) => { 
+        const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
+        
+        const allExpenses = [...pendingRows, ...remoteExpenses];
+        allExpenses.sort((a, b) => { 
           if(a.date !== b.date) return a.date < b.date ? 1 : -1;
           const fallbackTime = Date.now();
-          const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : fallbackTime);
-          const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : fallbackTime);
+          const at = a.createdAtLocal || (a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : fallbackTime));
+          const bt = b.createdAtLocal || (b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : fallbackTime));
           return bt - at;
         });
-        const pendingRows = this.pendingQueue.map(p => ({ id: p._localId, ...p, _pending: true }));
-        this.expenses = [...pendingRows, ...remoteExpenses];
-        lsSet(LS_KEYS.expensesCache, this.expenses.filter(e => !e._pending));
+        
+        this.expenses = allExpenses;
+        lsSet(LS_KEYS.expensesCache, remoteExpenses);
         this.$nextTick(()=>this.renderChart());
+      }, err => {
+        console.error('Expenses snapshot error:', err);
+        if(err.code === 'permission-denied') this.toast('Доступ к расходам запрещен правилами Firebase');
       });
     },
 
     toCents(amount){ return Math.round(Number(amount) * 100); },
     fromCents(cents){ return cents / 100; },
+
     buildFxGraph(){
       const graph = {};
       const pairTotals = {};
@@ -570,6 +598,7 @@ document.addEventListener('alpine:init', () => {
       });
       return graph;
     },
+
     findFxRate(fromCurrency, toCurrency){
       const from = (fromCurrency||'').toUpperCase();
       const to = (toCurrency||'').toUpperCase();
@@ -592,6 +621,7 @@ document.addEventListener('alpine:init', () => {
       }
       return null;
     },
+
     convertToBase(amount, fromCurrency){
       const from = (fromCurrency||'').toUpperCase();
       const to = (this.baseCurrency||'').toUpperCase();
@@ -600,21 +630,19 @@ document.addEventListener('alpine:init', () => {
       if(rate === null) return null;
       return Number(amount) * rate;
     },
+
     async loadFxTrades(){
-      if(!db || !this.workspaceId){ console.error('[loadFxTrades] db или workspaceId не готовы', {db:!!db, workspaceId:this.workspaceId}); return; }
+      if(!db || !this.workspaceId) return;
       db.collection('workspaces').doc(this.workspaceId).collection('fxTrades')
         .onSnapshot(snap=>{
           this.fxTrades = snap.docs.map(d=>({id:d.id, ...d.data()}))
             .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
           this.fxTradesUpdatedAt = Date.now();
           lsSet(LS_KEYS.fxTradesCache, { fxTrades: this.fxTrades, updatedAt: this.fxTradesUpdatedAt });
-          console.log('[loadFxTrades] загружено записей:', this.fxTrades.length);
           this.recalcAll();
-        }, err => {
-          console.error('[loadFxTrades] ошибка snapshot:', err);
-          this.toast('Не удалось загрузить курсы обмена: '+err.message);
-        });
+        }, err => console.error('FX snapshot error:', err));
     },
+
     openFxForm(){
       this.newFx = {
         fromCurrency:'RUB', fromAmount:'',
@@ -623,24 +651,15 @@ document.addEventListener('alpine:init', () => {
       };
       this.showFxForm = true;
     },
+
     async submitFx(){
       if(this.fxSaving) return;
       const fromAmount = parseFloat(this.newFx.fromAmount);
       const toAmount = parseFloat(this.newFx.toAmount);
-      if(!this.newFx.fromCurrency || !this.newFx.toCurrency){ this.toast('Выберите обе валюты'); return; }
+      if(!fromAmount || !toAmount || isNaN(fromAmount) || isNaN(toAmount)){ this.toast('Укажите корректные суммы'); return; }
       if(this.newFx.fromCurrency === this.newFx.toCurrency){ this.toast('Валюты должны отличаться'); return; }
-      if(!fromAmount || isNaN(fromAmount) || fromAmount <= 0){ this.toast('Введите сумму продажи'); return; }
-      if(!toAmount || isNaN(toAmount) || toAmount <= 0){ this.toast('Введите сумму покупки'); return; }
-      if(!this.newFx.date || !/^\d{4}-\d{2}-\d{2}$/.test(this.newFx.date)){ this.toast('Укажите дату в формате ГГГГ-ММ-ДД'); return; }
-      if(!this.user || !this.user.uid){ this.toast('Профиль пользователя ещё не готов, попробуйте через секунду'); console.error('[submitFx] user не готов', this.user); return; }
-      if(!db){ this.toast('Нет подключения к базе данных'); console.error('[submitFx] db is null'); return; }
-      if(!this.workspaceId){ this.toast('Рабочее пространство не готово'); console.error('[submitFx] workspaceId is null'); return; }
+      
       this.fxSaving = true;
-      try{
-        if(auth && auth.currentUser) await auth.currentUser.getIdToken(true);
-      }catch(e){
-        console.warn('Не удалось обновить токен', e);
-      }
       const payload = {
         fromCurrency: this.newFx.fromCurrency,
         fromAmountCents: this.toCents(fromAmount),
@@ -651,66 +670,36 @@ document.addEventListener('alpine:init', () => {
         date: this.newFx.date,
         createdBy: this.user.uid
       };
-      console.log('[submitFx] сохраняем', payload);
-      const timeoutMs = 10000;
-      let timedOut = false;
-      const timeoutId = setTimeout(()=>{
-        timedOut = true;
-        this.fxSaving = false;
-        this.toast('Превышено время ожидания сервера. Проверьте сеть и попробуйте снова.');
-        console.error('[submitFx] таймаут ожидания ответа Firestore (>'+timeoutMs+'мс)');
-      }, timeoutMs);
+      
       try{
         await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').add({
           ...payload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        clearTimeout(timeoutId);
-        if(timedOut) return;
         this.showFxForm = false;
         this.toast('Курс обмена сохранён');
       }catch(e){
-        clearTimeout(timeoutId);
-        console.error('[submitFx] Firestore add() упал:', e);
-        this.toast('Ошибка сохранения: '+(e && e.message ? e.message : 'неизвестная ошибка'));
+        console.error('FX save error:', e);
+        this.toast(`Ошибка сохранения: ${e.message}`);
       }finally{
-        clearTimeout(timeoutId);
-        if(!timedOut) this.fxSaving = false;
+        this.fxSaving = false;
       }
     },
+
     async deleteFx(id){
-      if(!db || !this.workspaceId){ this.toast('Удаление недоступно офлайн'); return; }
+      if(!db || !this.workspaceId) return;
       try{
         await db.collection('workspaces').doc(this.workspaceId).collection('fxTrades').doc(id).delete();
-        this.toast('Запись удалена');
+        this.toast('Курс удален');
       }catch(e){
-        console.error('[deleteFx] ошибка удаления', e);
-        this.toast('Не удалось удалить запись');
+        this.toast('Ошибка удаления');
       }
     },
-    debugFx(){
-      const graph = this.buildFxGraph();
-      console.log('===== FX DEBUG =====');
-      console.log('workspaceId:', this.workspaceId);
-      console.log('user.uid:', this.user ? this.user.uid : null);
-      console.log('db готов:', !!db);
-      console.log('fxTrades count:', this.fxTrades.length);
-      console.log('fxTrades:', this.fxTrades);
-      console.log('граф курсов:', graph);
-      console.log('baseCurrency:', this.baseCurrency);
-      CURRENCIES.forEach(c=>{
-        if(c === this.baseCurrency) return;
-        const rate = this.findFxRate(c, this.baseCurrency);
-        console.log(`${c} -> ${this.baseCurrency}:`, rate === null ? 'НЕТ КУРСА' : rate);
-      });
-      console.log('=====================');
-      return { workspaceId:this.workspaceId, userUid: this.user?this.user.uid:null, fxTradesCount:this.fxTrades.length, graph };
-    },
+
     setPeriod(mode){
       this.filterPeriod = mode;
       if(mode==='range' && (!this.customStartDate || !this.customEndDate)){
         const todayStr = this.today();
-        const today = new Date(todayStr);
-        const start = new Date(today);
+        const start = new Date();
         start.setDate(start.getDate()-30);
         const pad = n=> String(n).padStart(2,'0');
         this.customEndDate = todayStr;
@@ -718,80 +707,130 @@ document.addEventListener('alpine:init', () => {
       }
       this.recalcAll();
     },
+
     recalcAll(){ this.$nextTick(()=>this.renderChart()); },
-    liveBaseAmount(exp){
-      return this.convertToBase(exp.amount, exp.currency);
-    },
+    liveBaseAmount(exp){ return this.convertToBase(exp.amount, exp.currency); },
     catInfo(id){ return this.categories.find(c=>c.id===id) || DEFAULT_CATEGORIES[8]; },
 
     openAdd(prefill){
       this.form = prefill ? {...prefill, date:this.today()} : { amount:'', currency:this.baseCurrency, catId: this.categories[0]?.id||'other', type:'one', date:this.today(), comment:'', method:'card' };
       this.showAdd = true;
     },
+
     async submitExpense(){
-      if(!this.form.amount || isNaN(parseFloat(this.form.amount))) { this.toast('Введите сумму'); return; }
+      if(!this.form.amount || isNaN(parseFloat(this.form.amount))) { 
+        this.toast('Введите сумму'); 
+        return; 
+      }
+      if(!this.workspaceId){
+        this.toast('Ошибка: нет связи с пространством');
+        return;
+      }
+      if(!this.user || !this.user.uid){
+        this.toast('Ошибка: авторизуйтесь заново');
+        return;
+      }
+
       const amount = parseFloat(this.form.amount);
       const basePayload = {
-        amount, amountCents: this.toCents(amount), currency:this.form.currency,
-        catId:this.form.catId, type:this.form.type, date:this.form.date,
-        comment:this.form.comment||'', method:this.form.method, createdBy:this.user.uid
+        amount, 
+        amountCents: this.toCents(amount), 
+        currency: this.form.currency,
+        catId: this.form.catId, 
+        type: this.form.type, 
+        date: this.form.date,
+        comment: this.form.comment || '', 
+        method: this.form.method, 
+        createdBy: this.user.uid
       };
       lsSet(LS_KEYS.lastCat, this.form.catId);
 
       if(!this.isOnline){
-        const pendingId = 'pending_'+Date.now();
+        const pendingId = 'pending_' + Date.now();
         const payload = { ...basePayload, createdAtLocal: Date.now(), _localId: pendingId };
         this.pendingQueue.push(payload);
         lsSet(LS_KEYS.queue, this.pendingQueue);
-        this.expenses = [{ id: pendingId, ...payload, _pending: true }, ...this.expenses];
+        this.expenses.unshift({ id: pendingId, ...payload, _pending: true });
         this.showAdd = false;
-        this.toast('Сохранено локально, ждёт синхронизации');
+        this.toast('Сохранено локально (офлайн)');
         return;
       }
-      try{
-        await db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
-          ...basePayload, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+
+      try {
+        const addPromise = db.collection('workspaces').doc(this.workspaceId).collection('expenses').add({
+          ...basePayload, 
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('NETWORK_TIMEOUT')), 4000)
+        );
+
+        await Promise.race([addPromise, timeoutPromise]);
         this.showAdd = false;
         this.toast('Расход добавлен');
-      }catch(e){
-        const pendingId = 'pending_'+Date.now();
-        const payload = { ...basePayload, createdAtLocal: Date.now(), _localId: pendingId };
-        this.pendingQueue.push(payload);
-        lsSet(LS_KEYS.queue, this.pendingQueue);
-        this.expenses = [{ id: pendingId, ...payload, _pending: true }, ...this.expenses];
-        this.showAdd = false;
-        this.toast('Нет связи с сервером, сохранено локально');
+      } catch(e) {
+        console.error('Ошибка сохранения расхода:', e);
+        
+        const isNetworkError = e.message === 'NETWORK_TIMEOUT' || 
+                               (e.code && (e.code.includes('unavailable') || e.code.includes('deadline-exceeded'))) ||
+                               !navigator.onLine;
+
+        if (isNetworkError) {
+          const pendingId = 'pending_' + Date.now();
+          const payload = { ...basePayload, createdAtLocal: Date.now(), _localId: pendingId };
+          this.pendingQueue.push(payload);
+          lsSet(LS_KEYS.queue, this.pendingQueue);
+          this.expenses.unshift({ id: pendingId, ...payload, _pending: true });
+          this.showAdd = false;
+          this.toast('Связь прервалась — сохранено локально');
+        } else {
+          const code = e.code || 'error';
+          this.toast(`Ошибка Firestore [${code}]: ${e.message}`);
+        }
       }
     },
+
     async deleteExpense(id){
       if(String(id).startsWith('pending_')){
         this.expenses = this.expenses.filter(e => e.id !== id);
         this.pendingQueue = this.pendingQueue.filter(p => p._localId !== id);
         if(this.pendingQueue.length) lsSet(LS_KEYS.queue, this.pendingQueue); else lsRemove(LS_KEYS.queue);
-        this.toast('Отложенная запись удалена');
+        this.toast('Запись удалена');
         return;
       }
-      if(!db){ this.toast('Удаление без сети недоступно'); return; }
-      await db.collection('workspaces').doc(this.workspaceId).collection('expenses').doc(id).delete();
-      this.toast('Удалено');
+      if(!db || !this.workspaceId){ this.toast('Удаление без сети недоступно'); return; }
+      try{
+        await db.collection('workspaces').doc(this.workspaceId).collection('expenses').doc(id).delete();
+        this.toast('Удалено');
+      }catch(e){
+        this.toast(`Ошибка удаления: ${e.message}`);
+      }
     },
+
     repeatLast(exp){
       this.openAdd({ amount:String(exp.amount), currency:exp.currency, catId:exp.catId, type:exp.type, comment:exp.comment, method:exp.method });
     },
+
     async addCategory(){
       if(!this.newCatName.trim()) return;
       const id = 'c_'+Date.now();
       const newCat = { id, name:this.newCatName.trim(), icon:'dots' };
       this.categories.push(newCat);
-      if(db) await db.collection('workspaces').doc(this.workspaceId).set({categories:this.categories}, {merge:true});
+      if(db && this.workspaceId) {
+        await db.collection('workspaces').doc(this.workspaceId).set({categories:this.categories}, {merge:true});
+      }
       lsSet(LS_KEYS.workspaceCache, { workspaceId:this.workspaceId, baseCurrency:this.baseCurrency, categories:this.categories });
       this.form.catId = id;
-      this.newCatName=''; this.showNewCat=false;
+      this.newCatName=''; 
+      this.showNewCat=false;
     },
+
     async setBaseCurrency(c){
       this.baseCurrency = c;
-      if(db) await db.collection('workspaces').doc(this.workspaceId).set({baseCurrency:c}, {merge:true});
+      if(db && this.workspaceId) {
+        await db.collection('workspaces').doc(this.workspaceId).set({baseCurrency:c}, {merge:true});
+      }
       lsSet(LS_KEYS.workspaceCache, { workspaceId:this.workspaceId, baseCurrency:this.baseCurrency, categories:this.categories });
       this.recalcAll();
     },
@@ -831,6 +870,7 @@ document.addEventListener('alpine:init', () => {
       }
       return list;
     },
+
     get periodExpenses(){
       let list = [...this.expenses];
       const today = new Date();
@@ -863,6 +903,7 @@ document.addEventListener('alpine:init', () => {
       }
       return list;
     },
+
     get monthTotal(){
       const cents = this.periodExpenses.reduce((s,e)=>{ const v=this.liveBaseAmount(e); return v===null?s:s+this.toCents(v); },0);
       return this.fromCents(cents);
@@ -896,29 +937,7 @@ document.addEventListener('alpine:init', () => {
       });
       return Object.entries(map).map(([catId,cents])=>({catId, total:this.fromCents(cents), cat:this.catInfo(catId)})).sort((a,b)=>b.total-a.total);
     },
-    selfTestFx(){
-      let ok = true;
-      const saved = this.fxTrades;
-      this.fxTrades = [
-        { fromCurrency:'RUB', fromAmount:55000, toCurrency:'EUR', toAmount:500 },
-        { fromCurrency:'EUR', fromAmount:7000,  toCurrency:'RSD', toAmount:663000 }
-      ];
-      const rubToEur = this.findFxRate('RUB','EUR');
-      const eurToRsd = this.findFxRate('EUR','RSD');
-      const rubToRsd = this.findFxRate('RUB','RSD');
-      const rsdToRub = this.findFxRate('RSD','RUB');
-      const t1 = rubToEur!==null && eurToRsd!==null && rubToRsd!==null && rsdToRub!==null
-        && Math.abs(rubToRsd - rubToEur*eurToRsd) < 1e-9 && Math.abs(rubToRsd*rsdToRub - 1) < 1e-9;
-      console.log(t1?'✅ Тест 1 PASSED':'❌ Тест 1 FAILED', {rubToEur,eurToRsd,rubToRsd,rsdToRub});
-      ok = ok && t1;
-      const noPath = this.findFxRate('USD','GEL');
-      const t2 = noPath === null;
-      console.log(t2?'✅ Тест 2 PASSED':'❌ Тест 2 FAILED', {noPath});
-      ok = ok && t2;
-      this.fxTrades = saved;
-      console.log(ok?'✅✅ ВСЕ ТЕСТЫ ПРОШЛИ':'❌ ЕСТЬ ОШИБКИ');
-      return ok;
-    },
+
     get recurringList(){
       const seen = {};
       this.expenses.filter(e=>e.type==='recurring').forEach(e=>{
@@ -926,11 +945,13 @@ document.addEventListener('alpine:init', () => {
       });
       return Object.values(seen);
     },
+
     fmt(n, cur){
       if(n===undefined||n===null||isNaN(n)) return '—';
       const sym = CUR_SYMBOL[cur]||cur;
       return n.toLocaleString('ru-RU',{maximumFractionDigits:2}) + ' ' + sym;
     },
+
     renderChart(){
       const canvas = document.getElementById('catChart');
       if(!canvas) return;
@@ -950,12 +971,10 @@ document.addEventListener('alpine:init', () => {
 
 <div class="app" x-data="appData" :data-theme="theme" >
 
-  <!-- LOADING -->
   <div x-show="loading" class="login-screen">
     <div class="skel" style="width:64px;height:64px;border-radius:50%"></div>
   </div>
 
-  <!-- LOGIN -->
   <div x-show="!loading && !user" x-cloak class="login-screen">
     <div style="width:72px;height:72px;border-radius:20px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff" x-html="icon('home',36)"></div>
     <div>
@@ -968,7 +987,6 @@ document.addEventListener('alpine:init', () => {
     </button>
   </div>
 
-  <!-- WORKSPACE SETUP -->
   <div x-show="!loading && user && !workspaceId && !workspaceLoading" x-cloak class="login-screen">
     <h1 style="font-size:22px">Настройка пары</h1>
     <p class="muted">Создайте общее пространство или введите код, который вам прислал партнёр.</p>
@@ -978,7 +996,6 @@ document.addEventListener('alpine:init', () => {
     <button class="btn-primary" style="max-width:280px;background:var(--color-text);" @click="joinWorkspace()">Присоединиться</button>
   </div>
 
-  <!-- MAIN APP -->
   <template x-if="!loading && user && workspaceId">
   <div style="display:flex;flex-direction:column;flex:1;min-height:0;width:100%">
     <header class="topbar">
@@ -991,8 +1008,6 @@ document.addEventListener('alpine:init', () => {
           <span class="net-dot"></span>
           <span x-text="isOnline ? 'Онлайн' : 'Офлайн'"></span>
         </div>
-         <button class="iconbtn" @click="toast('Версия v1 · настроение отличное 🌈')" style="position:relative;overflow:hidden">
-         <span style="font-weight:800;font-size:13px;background:linear-gradient(90deg,#ff0000,#ff8c00,#ffee00,#00c853,#00b0ff,#7c4dff,#ff00c8);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rainbow-shift 3s linear infinite;">v1</span></button>
         <button class="iconbtn" @click="manualRefresh()" :class="refreshing && 'spin-icon'" x-html="icon('refresh')" aria-label="Обновить"></button>
         <button class="iconbtn" @click="toggleTheme()" x-html="theme==='dark'?icon('sun'):icon('moon')"></button>
         <button class="iconbtn" @click="showSettings=true" x-html="icon('settings')"></button>
@@ -1000,7 +1015,6 @@ document.addEventListener('alpine:init', () => {
     </header>
 
     <main>
-      <!-- FEED TAB -->
       <div x-show="tab==='feed'" class="stack">
         <div class="card">
           <div class="faint">Всего за месяц</div>
@@ -1024,10 +1038,10 @@ document.addEventListener('alpine:init', () => {
 
         <div class="card" style="padding:8px 16px">
           <template x-if="filteredExpenses.length===0">
-            <div class="empty-state" style="padding:32px 8px">
-              <div class="empty-state-icon" x-html="icon('cart',40)"></div>
+            <div class="empty-state" style="padding:32px 8px;text-align:center">
+              <div class="empty-state-icon" x-html="icon('cart',40)" style="margin:0 auto 8px;color:var(--color-text-faint)"></div>
               <h3 style="font-size:16px;margin-bottom:6px">Пока нет расходов</h3>
-              <p class="faint">Нажмите «+», чтобы добавить первый расход переезда.</p>
+              <p class="faint">Нажмите «+», чтобы добавить первый расход.</p>
             </div>
           </template>
           <template x-for="exp in filteredExpenses" :key="exp.id">
@@ -1039,7 +1053,7 @@ document.addEventListener('alpine:init', () => {
                   <span x-text="exp.date"></span>
                   <span x-show="exp.comment"> · </span><span x-text="exp.comment"></span>
                   <span x-show="exp.type==='recurring'"> · 🔁</span>
-                  <span x-show="exp._pending" style="color:var(--color-warning)"> · ⏳ ожидает синхронизации</span>
+                  <span x-show="exp._pending" style="color:var(--color-warning);font-weight:600"> · ⏳ ожидает синхронизации</span>
                 </div>
               </div>
               <div class="exp-amt">
@@ -1054,7 +1068,6 @@ document.addEventListener('alpine:init', () => {
         </div>
       </div>
 
-      <!-- STATS TAB -->
       <div x-show="tab==='stats'" class="stack">
         <div class="kpi-grid">
           <div class="kpi"><div class="faint">Всего за период</div><div class="v" x-text="fmt(monthTotal, baseCurrency)"></div></div>
@@ -1087,15 +1100,13 @@ document.addEventListener('alpine:init', () => {
         </div>
       </div>
 
-      <!-- RECURRING TAB -->
       <div x-show="tab==='recurring'" class="stack">
-        <p class="muted" style="font-size:13px">Последние регулярные платежи по категориям — аренда, интернет, страховка и т.д.</p>
+        <p class="muted" style="font-size:13px">Последние регулярные платежи по категориям.</p>
         <div class="card" style="padding:8px 16px">
           <template x-if="recurringList.length===0">
-            <div class="empty-state" style="padding:32px 8px">
-              <div class="empty-state-icon" x-html="icon('repeat',40)"></div>
+            <div class="empty-state" style="padding:32px 8px;text-align:center">
+              <div class="empty-state-icon" x-html="icon('repeat',40)" style="margin:0 auto 8px;color:var(--color-text-faint)"></div>
               <h3 style="font-size:16px">Нет регулярных платежей</h3>
-              <p class="faint">Отметьте расход как «Регулярный» при добавлении.</p>
             </div>
           </template>
           <template x-for="exp in recurringList" :key="exp.id">
@@ -1113,17 +1124,14 @@ document.addEventListener('alpine:init', () => {
       </div>
     </main>
 
-    <!-- TABBAR -->
     <nav class="tabbar">
       <button class="tab" :class="tab==='feed'&&'active'" @click="tab='feed'" x-html="icon('feed')+'<span>Лента</span>'"></button>
       <button class="tab" :class="tab==='stats'&&'active'" @click="tab='stats'" x-html="icon('stats')+'<span>Статистика</span>'"></button>
       <button class="tab" :class="tab==='recurring'&&'active'" @click="tab='recurring'" x-html="icon('repeat')+'<span>Регулярные</span>'"></button>
     </nav>
 
-    <!-- FAB -->
     <button class="fab" @click="openAdd()" x-html="icon('plus',28)"></button>
 
-    <!-- ADD EXPENSE SHEET -->
     <div class="sheet-overlay" x-show="showAdd" x-cloak x-transition.opacity @click.self="showAdd=false">
       <div class="sheet-full">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1195,7 +1203,6 @@ document.addEventListener('alpine:init', () => {
       </div>
     </div>
 
-    <!-- SETTINGS SHEET -->
     <div class="sheet-overlay" x-show="showSettings" x-cloak x-transition.opacity @click.self="showSettings=false">
       <div class="sheet">
         <div class="sheet-handle"></div>
@@ -1215,8 +1222,6 @@ document.addEventListener('alpine:init', () => {
               <span class="field-label" style="margin-bottom:0">Курсы обмена валют</span>
               <button class="iconbtn" style="width:32px;height:32px" @click="showSettings=false; openFxForm()" x-html="icon('plus',16)"></button>
             </div>
-            <p class="faint" style="margin-bottom:8px">Фиксируется один раз при обмене валюты. Можно указывать обмены между любыми валютами — приложение само посчитает курс через цепочку.</p>
-            <div class="faint" x-show="fxRatesStaleLabel" x-text="fxRatesStaleLabel" style="margin-bottom:8px;color:var(--color-warning)"></div>
             <div class="card stack" style="padding:8px 16px" x-show="fxTrades.length">
               <template x-for="t in fxTrades" :key="t.id">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--color-divider)">
@@ -1244,7 +1249,6 @@ document.addEventListener('alpine:init', () => {
       </div>
     </div>
 
-    <!-- FX TRADE SHEET -->
     <div class="sheet-overlay" x-show="showFxForm" x-cloak x-transition.opacity @click.self="showFxForm=false">
       <div class="sheet-full">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1253,7 +1257,6 @@ document.addEventListener('alpine:init', () => {
           <span style="width:40px"></span>
         </div>
         <div class="stack" style="margin-top:8px">
-          <p class="faint">Например: отдали 663000 RUB, получили 7000 EUR.</p>
           <div>
             <span class="field-label">Отдали (валюта продажи)</span>
             <div class="currency-row">
@@ -1291,34 +1294,22 @@ document.addEventListener('alpine:init', () => {
   </div>
   </template>
 
-  <!-- TOAST -->
   <div class="toast" x-show="toastMsg" x-cloak x-text="toastMsg" x-transition></div>
 
 </div>
 
 <script>
-
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => {
-        console.log('[app] Service Worker зарегистрирован:', reg.scope);
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if(newWorker){
-            newWorker.addEventListener('statechange', () => {
-              console.log('[app] SW state:', newWorker.state);
-            });
-          }
-        });
+        console.log('[app] SW registered:', reg.scope);
       })
       .catch(err => {
-        console.error('[app] Не удалось зарегистрировать Service Worker:', err);
+        console.error('[app] SW registration failed:', err);
       });
   });
 
-  // Если контроллер сменился (обновилась версия SW), тихо перезагружаем
-  // страницу один раз, чтобы новая версия сразу начала обслуживать запросы.
   let refreshingPage = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if(refreshingPage) return;
