@@ -482,13 +482,26 @@ document.addEventListener('alpine:init', () => {
       this.expenses = []; 
     },
 
+    // Замените метод loadWorkspace() целиком:
     async loadWorkspace(){
       this.workspaceLoading = true;
       try {
         const userDoc = await db.collection('users').doc(this.user.uid).get();
-        if(userDoc.exists && userDoc.data().workspaceId){
+        
+        if (userDoc.exists && userDoc.data().workspaceId) {
           this.workspaceId = userDoc.data().workspaceId;
           this.attachListeners();
+        } else if (this.workspaceId) {
+          // МЕХАНИЗМ САМОВОССТАНОВЛЕНИЯ:
+          // Если документ в базе был удален, но у клиента сохранен ID пространства,
+          // восстанавливаем документ в Firestore и гарантированно подключаем слушатель
+          await db.collection('users').doc(this.user.uid).set({ 
+            workspaceId: this.workspaceId, 
+            email: this.user.email 
+          }, { merge: true });
+          this.attachListeners();
+        } else {
+          this.workspaceId = null;
         }
       } catch(e){
         console.error('loadWorkspace error:', e);
